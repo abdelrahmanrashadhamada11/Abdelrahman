@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>عبد الرحمن OS — نظام تشغيل شخصي</title>
+<meta name="description" content="نظام تشغيل شخصي يجمع المهام، المشاريع، شركة الميديا، صناعة المحتوى، التعلم، الدين، الصحة، الأسرة، والمال." />
+<meta name="theme-color" content="#2F5D53" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="عبد الرحمن OS" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18",
+    "react-dom/client": "https://esm.sh/react-dom@18/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.383.0?external=react"
+  }
+}
+</script>
+
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; overscroll-behavior-y: none; }
+  #root { min-height: 100vh; }
+  /* iOS safe-area padding so the sidebar/header aren't hidden under notches */
+  @supports (padding: max(0px)) {
+    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F5F6F3;font-family:sans-serif;color:#5B6570;">
+    جارِ تحميل نظامك الشخصي…
+  </div>
+</div>
+
+<script>
+  /* ============================================================
+     طبقة تخزين محلية دائمة على الجهاز (تحاكي واجهة window.storage
+     المستخدمة في مسودة الـ artifact الأصلية، لكن بدون اتصال إنترنت)
+     ============================================================ */
+  (function () {
+    const NS = "aros_storage__";
+    window.storage = {
+      async get(key /*, shared */) {
+        const raw = localStorage.getItem(NS + key);
+        if (raw === null) throw new Error("key not found");
+        return { key, value: raw, shared: false };
+      },
+      async set(key, value /*, shared */) {
+        localStorage.setItem(NS + key, value);
+        return { key, value, shared: false };
+      },
+      async delete(key /*, shared */) {
+        const existed = localStorage.getItem(NS + key) !== null;
+        localStorage.removeItem(NS + key);
+        return { key, deleted: existed, shared: false };
+      },
+      async list(prefix /*, shared */) {
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(NS)) {
+            const clean = k.slice(NS.length);
+            if (!prefix || clean.startsWith(prefix)) keys.push(clean);
+          }
+        }
+        return { keys, prefix, shared: false };
+      },
+    };
+  })();
+
+  // تسجيل الـ Service Worker للعمل بدون إنترنت وقابلية التثبيت كتطبيق
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
+
+<script type="text/babel" data-presets="react" data-type="module">
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import ReactDOM from "react-dom/client";
+import {
+  LayoutDashboard, CheckSquare, FolderKanban, Users, Building2, Video,
+  Sparkles, Bot, Camera, GraduationCap, BookOpen, HeartPulse, Users2,
+  Wallet, ClipboardList, Sun, Moon, Plus, Trash2, X, Check, ChevronLeft,
+  Clock, TrendingUp, Menu, Circle, CheckCircle2, AlertTriangle, Star,
+  Droplet, Moon as MoonIcon, Dumbbell, Scale, Compass, Gem, Briefcase,
+  FileText, Receipt, Image as ImageIcon, Target, Home as HomeIcon, Search,
+  Download, DownloadCloud, UploadCloud
+} from "lucide-react";
+
+/* ============================================================
+   عبد الرحمن OS — نظام تشغيل شخصي
+   هوية بصرية: أزرق ليلي عميق + أخضر نمو هادئ + ذهبي للإنجاز الروحي
+   خط العرض: Cairo (عناوين) + Tajawal (نصوص)
+   العنصر المميز: "مؤشر الحياة" — نجمة شعاعية هندسية تلخّص التوازن
+   نسخة قابلة للتثبيت (PWA) — التخزين محلي على الجهاز بالكامل
+   ============================================================ */
+
+const FONT_LINK_ID = "aros-fonts";
+function useFonts() {
+  useEffect(() => {
+    if (document.getElementById(FONT_LINK_ID)) return;
+    const link = document.createElement("link");
+    link.id = FONT_LINK_ID;
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@400;500;700&display=swap";
+    document.head.appendChild(link);
+  }, []);
+}
+
+/* ---------------- الألوان (فاتح / داكن) ---------------- */
+const PALETTES = {
+  light: {
+    bg: "#F5F6F3",
+    surface: "#FFFFFF",
+    surfaceAlt: "#EFF1EC",
+    border: "#E3E5DF",
+    ink: "#141B22",
+    inkSoft: "#5B6570",
+    accent: "#2F5D53",
+    accentSoft: "#DCEAE4",
+    gold: "#B0793B",
+    goldSoft: "#F3E6D2",
+    danger: "#B3462C",
+    dangerSoft: "#F5E1DA",
+    night: "#2C3E52",
+    nightSoft: "#E4E9EF",
+  },
+  dark: {
+    bg: "#10151A",
+    surface: "#171F26",
+    surfaceAlt: "#1E2830",
+    border: "#28333C",
+    ink: "#EDEFEF",
+    inkSoft: "#93A0AA",
+    accent: "#5BA394",
+    accentSoft: "#1D3630",
+    gold: "#D4A15C",
+    goldSoft: "#3A2E1C",
+    danger: "#E17358",
+    dangerSoft: "#3A2420",
+    night: "#7C93AE",
+    nightSoft: "#212C38",
+  },
+};
+
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const fmtDate = (iso) => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso + "T00:00:00").toLocaleDateString("ar-EG", { day: "numeric", month: "long" });
+  } catch {
+    return iso;
+  }
+};
+const fmtMoney = (n) => {
+  const v = Number(n) || 0;
+  return v.toLocaleString("ar-EG") + " ر.س";
+};
+const startOfWeek = (d) => {
+  const date = new Date(d);
+  const day = date.getDay();
+  date.setDate(date.getDate() - day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+const endOfWeek = (d) => {
+  const s = startOfWeek(d);
+  const e = new Date(s);
+  e.setDate(e.getDate() + 6);
+  e.setHours(23, 59, 59, 999);
+  return e;
+};
+
+/* ---------------- تخزين دائم ---------------- */
+const STORAGE_KEY = "life-os-db-v1";
+
+function emptyDB() {
+  return {
+    tasks: [],
+    projects: [],
+    clients: [],
+    aiTools: [],
+    equipment: [],
+    contentIdeas: [],
+    mediaItems: [],
+    portfolio: [],
+    brand: { videos: 0, reels: 0, contentClients: 0, sponsorships: 0, productReviews: 0, targets: [] },
+    learningCategories: [
+      { id: uid(), name: "الذكاء الاصطناعي", hours: 0 },
+      { id: uid(), name: "التصميم", hours: 0 },
+      { id: uid(), name: "اللغة الإنجليزية", hours: 0 },
+    ],
+    learningLog: [],
+    deen: {
+      prayers: {},
+      wird: {},
+      azkar: {},
+      hifz: { surah: "", ayah: "", percent: 0 },
+      hifzLog: [],
+      monthlyNotes: "",
+    },
+    health: {
+      sleep: {},
+      water: {},
+      exercise: {},
+      weightLog: [],
+    },
+    family: {
+      sessions: [],
+      goals: [],
+      childNeeds: [],
+      budget: "",
+      events: [],
+      notes: "",
+    },
+    finance: {
+      income: [],
+      expenses: [],
+      apartmentGoal: { target: 0, current: 0 },
+      emergencyGoal: { target: 0, current: 0 },
+      investmentNotes: "",
+    },
+    reviews: { daily: [], weekly: [], monthly: [], quarterly: [], yearly: [] },
+    habits: [
+      { id: uid(), name: "قراءة", done: {} },
+      { id: uid(), name: "رياضة", done: {} },
+      { id: uid(), name: "لا هاتف بعد العشاء", done: {} },
+    ],
+  };
+}
+
+function useDB() {
+  const [db, setDB] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [lastSaved, setLastSaved] = useState(null);
+  const saveTimer = useRef(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY, false);
+        if (res && res.value) {
+          const parsed = JSON.parse(res.value);
+          setDB({ ...emptyDB(), ...parsed });
+        } else {
+          setDB(emptyDB());
+        }
+        setStatus("ready");
+      } catch {
+        setDB(emptyDB());
+        setStatus("ready");
+      }
+    })();
+  }, []);
+
+  const update = useCallback((updater) => {
+    setDB((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(async () => {
+        try {
+          await window.storage.set(STORAGE_KEY, JSON.stringify(next), false);
+          setLastSaved(new Date());
+        } catch {
+          /* تجاهل فشل الحفظ */
+        }
+      }, 350);
+      return next;
+    });
+  }, []);
+
+  const exportJSON = useCallback(() => {
+    if (!db) return;
+    const blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aros-backup-${todayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [db]);
+
+  const importJSON = useCallback(
+    (file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          update(() => ({ ...emptyDB(), ...parsed }));
+        } catch {
+          alert("تعذّرت قراءة الملف — تأكد أنه نسخة احتياطية صحيحة من التطبيق.");
+        }
+      };
+      reader.readAsText(file);
+    },
+    [update]
+  );
+
+  return { db, update, status, lastSaved, exportJSON, importJSON };
+}
+
+/* ---------------- أقسام التطبيق ---------------- */
+const SECTIONS = [
+  { group: "الرئيسية", items: [{ id: "dashboard", label: "لوحة التحكم", icon: LayoutDashboard }] },
+  {
+    group: "الإنتاجية",
+    items: [
+      { id: "tasks", label: "المهام", icon: CheckSquare },
+      { id: "projects", label: "المشاريع", icon: FolderKanban },
+      { id: "clients", label: "العملاء", icon: Users },
+    ],
+  },
+  {
+    group: "الأعمال",
+    items: [
+      { id: "media", label: "شركة الميديا", icon: Building2 },
+      { id: "content", label: "صناعة المحتوى", icon: Video },
+      { id: "brand", label: "البراند الشخصي", icon: Sparkles },
+      { id: "aitools", label: "أدوات الذكاء الاصطناعي", icon: Bot },
+      { id: "equipment", label: "المعدات", icon: Camera },
+    ],
+  },
+  {
+    group: "النمو",
+    items: [
+      { id: "learning", label: "التعلم", icon: GraduationCap },
+      { id: "deen", label: "القرآن والدين", icon: BookOpen },
+      { id: "health", label: "الصحة", icon: HeartPulse },
+    ],
+  },
+  {
+    group: "الحياة",
+    items: [
+      { id: "family", label: "الأسرة", icon: Users2 },
+      { id: "finance", label: "المال", icon: Wallet },
+    ],
+  },
+  { group: "التأمل", items: [{ id: "reviews", label: "المراجعات", icon: ClipboardList }] },
+  { group: "النظام", items: [{ id: "settings", label: "النسخ الاحتياطي", icon: DownloadCloud }] },
+];
+
+/* ---------------- عناصر واجهة عامة ---------------- */
+function Card({ t, children, className = "", style = {} }) {
+  return (
+    <div className={`rounded-2xl border ${className}`} style={{ background: t.surface, borderColor: t.border, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ t, title, subtitle, icon: Icon }) {
+  return (
+    <div className="flex items-center gap-3 mb-6">
+      {Icon && (
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: t.accentSoft, color: t.accent }}>
+          <Icon size={22} />
+        </div>
+      )}
+      <div>
+        <h1 className="text-2xl font-extrabold" style={{ color: t.ink, fontFamily: "Cairo" }}>{title}</h1>
+        {subtitle && <p className="text-sm mt-0.5" style={{ color: t.inkSoft }}>{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+function ProgressBar({ t, percent, color }) {
+  const p = Math.max(0, Math.min(100, percent || 0));
+  return (
+    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: t.surfaceAlt }}>
+      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${p}%`, background: color || t.accent }} />
+    </div>
+  );
+}
+
+function IconBtn({ t, onClick, children, title, danger }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0"
+      style={{ color: danger ? t.danger : t.inkSoft, background: "transparent" }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = danger ? t.dangerSoft : t.surfaceAlt)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TextInput({ t, ...props }) {
+  return (
+    <input
+      {...props}
+      className="w-full px-3 py-2 rounded-lg text-sm outline-none border transition-colors"
+      style={{ background: t.bg, borderColor: t.border, color: t.ink }}
+    />
+  );
+}
+function TextArea({ t, ...props }) {
+  return (
+    <textarea
+      {...props}
+      className="w-full px-3 py-2 rounded-lg text-sm outline-none border transition-colors resize-none"
+      style={{ background: t.bg, borderColor: t.border, color: t.ink }}
+    />
+  );
+}
+function Select({ t, children, ...props }) {
+  return (
+    <select {...props} className="w-full px-3 py-2 rounded-lg text-sm outline-none border" style={{ background: t.bg, borderColor: t.border, color: t.ink }}>
+      {children}
+    </select>
+  );
+}
+
+function PrimaryBtn({ t, onClick, children, icon: Icon }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-transform active:scale-95"
+      style={{ background: t.accent, color: "#fff", fontFamily: "Cairo" }}
+    >
+      {Icon && <Icon size={16} />}
+      {children}
+    </button>
+  );
+}
+
+/* ---------------- مؤشر الحياة (العنصر المميز) ---------------- */
+function LifeStar({ t, domains }) {
+  const n = domains.length;
+  const size = 240;
+  const cx = size / 2;
+  const cy = size / 2;
+  const rMax = 92;
+  const angle = (i) => (Math.PI * 2 * i) / n - Math.PI / 2;
+
+  const points = domains.map((d, i) => {
+    const r = (d.percent / 100) * rMax;
+    const a = angle(i);
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
+  const outline = domains.map((d, i) => {
+    const a = angle(i);
+    return [cx + rMax * Math.cos(a), cy + rMax * Math.sin(a)];
+  });
+
+  const poly = (pts) => pts.map((p) => p.join(",")).join(" ");
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {[0.33, 0.66, 1].map((f, idx) => (
+        <polygon key={idx} points={poly(outline.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]))} fill="none" stroke={t.border} strokeWidth="1" />
+      ))}
+      {outline.map(([x, y], i) => (
+        <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={t.border} strokeWidth="1" />
+      ))}
+      <polygon points={poly(points)} fill={t.accent} fillOpacity="0.28" stroke={t.accent} strokeWidth="2" />
+      {points.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="4" fill={domains[i].color || t.accent} />
+      ))}
+      {outline.map(([x, y], i) => {
+        const a = angle(i);
+        const lx = cx + (rMax + 26) * Math.cos(a);
+        const ly = cy + (rMax + 26) * Math.sin(a);
+        return (
+          <text key={i} x={lx} y={ly} fill={t.inkSoft} fontSize="11" fontFamily="Tajawal" textAnchor="middle" dominantBaseline="middle">
+            {domains[i].label}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ---------------- قائمة سجلات عامة (CRUD مبسط + بحث) ---------------- */
+function RecordList({ t, title, icon: Icon, fields, items, onAdd, onDelete, renderExtra, emptyHint, searchable = true }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState({});
+  const [query, setQuery] = useState("");
+
+  const submit = () => {
+    const hasAny = fields.some((f) => (draft[f.key] || "").toString().trim());
+    if (!hasAny) return;
+    onAdd({ id: uid(), ...draft });
+    setDraft({});
+    setOpen(false);
+  };
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return items;
+    const q = query.trim().toLowerCase();
+    return items.filter((it) => fields.some((f) => (it[f.key] || "").toString().toLowerCase().includes(q)));
+  }, [items, query, fields]);
+
+  return (
+    <Card t={t} className="p-5">
+      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon size={18} style={{ color: t.accent }} />}
+          {title && <h3 className="font-bold" style={{ color: t.ink, fontFamily: "Cairo" }}>{title}</h3>}
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: t.surfaceAlt, color: t.inkSoft }}>{items.length}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {searchable && items.length > 3 && (
+            <div className="relative">
+              <Search size={13} style={{ position: "absolute", right: 8, top: 9, color: t.inkSoft }} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="بحث..."
+                className="text-xs pr-6 pl-2 py-1.5 rounded-lg border outline-none"
+                style={{ background: t.bg, borderColor: t.border, color: t.ink, width: 110 }}
+              />
+            </div>
+          )}
+          <IconBtn t={t} onClick={() => setOpen((v) => !v)} title="إضافة">
+            {open ? <X size={16} /> : <Plus size={16} />}
+          </IconBtn>
+        </div>
+      </div>
+
+      {open && (
+        <div className="mb-4 p-3 rounded-xl grid gap-2" style={{ background: t.surfaceAlt }}>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(2, fields.length)}, 1fr)` }}>
+            {fields.map((f) => (
+              <div key={f.key}>
+                <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>{f.label}</label>
+                {f.type === "select" ? (
+                  <Select t={t} value={draft[f.key] || ""} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}>
+                    <option value="">—</option>
+                    {f.options.map((o) => (<option key={o} value={o}>{o}</option>))}
+                  </Select>
+                ) : (
+                  <TextInput
+                    t={t}
+                    type={f.type || "text"}
+                    value={draft[f.key] || ""}
+                    onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+                    placeholder={f.placeholder || ""}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <PrimaryBtn t={t} onClick={submit} icon={Check}>حفظ</PrimaryBtn>
+          </div>
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <p className="text-sm py-4 text-center" style={{ color: t.inkSoft }}>{emptyHint || "لا توجد عناصر بعد"}</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm py-4 text-center" style={{ color: t.inkSoft }}>لا نتائج مطابقة لبحثك.</p>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((it) => (
+            <div key={it.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border" style={{ borderColor: t.border }}>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-sm truncate" style={{ color: t.ink, fontFamily: "Cairo" }}>{it[fields[0].key] || "—"}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                  {fields.slice(1).map((f) => it[f.key] && (
+                    <span key={f.key} className="text-xs" style={{ color: t.inkSoft }}>{f.label}: {it[f.key]}</span>
+                  ))}
+                </div>
+                {renderExtra && renderExtra(it)}
+              </div>
+              <IconBtn t={t} danger onClick={() => onDelete(it.id)} title="حذف">
+                <Trash2 size={15} />
+              </IconBtn>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ---------------- لوحة التحكم ---------------- */
+function Dashboard({ t, db, update, setActiveSection }) {
+  const today = todayISO();
+  const tasksToday = db.tasks.filter((x) => x.date === today);
+  const doneToday = tasksToday.filter((x) => x.status === "مكتملة");
+
+  const weekS = startOfWeek(new Date());
+  const weekE = endOfWeek(new Date());
+  const tasksWeek = db.tasks.filter((x) => x.date && new Date(x.date) >= weekS && new Date(x.date) <= weekE);
+  const doneWeek = tasksWeek.filter((x) => x.status === "مكتملة");
+
+  const monthStr = today.slice(0, 7);
+  const tasksMonth = db.tasks.filter((x) => x.date && x.date.startsWith(monthStr));
+  const doneMonth = tasksMonth.filter((x) => x.status === "مكتملة");
+
+  const pct = (a, b) => (b === 0 ? 0 : Math.round((a / b) * 100));
+
+  const income = db.finance.income.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const expenses = db.finance.expenses.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+  const priorities = db.tasks.filter((x) => x.status !== "مكتملة" && x.priority === "عالية").slice(0, 3);
+
+  const learningHours = db.learningLog.reduce((s, l) => s + (Number(l.hours) || 0), 0);
+  const familySessions = db.family.sessions.length;
+  const hifzPct = Number(db.deen.hifz.percent) || 0;
+
+  const activeProjects = db.projects.filter((p) => Number(p.progress || 0) < 100);
+
+  const domains = [
+    { label: "المهام", percent: pct(doneWeek.length, tasksWeek.length || 1), color: t.accent },
+    { label: "الدين", percent: hifzPct, color: t.gold },
+    { label: "الصحة", percent: Math.min(100, (Number(db.health.water[today]) || 0) * 12.5), color: "#4C8C6B" },
+    { label: "التعلم", percent: Math.min(100, learningHours * 5), color: t.night },
+    { label: "المال", percent: db.finance.apartmentGoal.target ? Math.min(100, pct(db.finance.apartmentGoal.current, db.finance.apartmentGoal.target)) : 0, color: "#8A6BAE" },
+    { label: "الأسرة", percent: Math.min(100, familySessions * 20), color: "#C1667E" },
+  ];
+
+  const StatTile = ({ label, value, icon: Icon, color, onClick }) => (
+    <Card t={t} className="p-4 cursor-pointer hover:shadow-sm transition-shadow">
+      <div onClick={onClick} className="flex items-center justify-between">
+        <div>
+          <p className="text-xs mb-1" style={{ color: t.inkSoft }}>{label}</p>
+          <p className="text-xl font-extrabold" style={{ color: t.ink, fontFamily: "Cairo" }}>{value}</p>
+        </div>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: (color || t.accent) + "22", color: color || t.accent }}>
+          <Icon size={18} />
+        </div>
+      </div>
+    </Card>
+  );
+
+  return (
+    <div>
+      <SectionTitle t={t} title="لوحة التحكم" subtitle={`أهلًا بك — ${new Date().toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" })}`} icon={LayoutDashboard} />
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <StatTile label="مهام اليوم" value={`${doneToday.length}/${tasksToday.length}`} icon={CheckSquare} onClick={() => setActiveSection("tasks")} />
+        <StatTile label="إنجاز الأسبوع" value={`${pct(doneWeek.length, tasksWeek.length)}%`} icon={TrendingUp} color={t.night} />
+        <StatTile label="إنجاز الشهر" value={`${pct(doneMonth.length, tasksMonth.length)}%`} icon={TrendingUp} color={t.gold} />
+        <StatTile label="المشاريع الحالية" value={activeProjects.length} icon={FolderKanban} onClick={() => setActiveSection("projects")} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card t={t} className="p-5 lg:col-span-2">
+          <h3 className="font-bold mb-3" style={{ color: t.ink, fontFamily: "Cairo" }}>أهم 3 أولويات</h3>
+          {priorities.length === 0 ? (
+            <p className="text-sm" style={{ color: t.inkSoft }}>لا توجد أولويات عالية غير منجزة — أضف مهامًا من قسم "المهام".</p>
+          ) : (
+            <div className="space-y-2">
+              {priorities.map((p) => (
+                <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: t.border }}>
+                  <div className="w-2 h-2 rounded-full" style={{ background: t.danger }} />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold" style={{ color: t.ink }}>{p.title}</p>
+                    <p className="text-xs" style={{ color: t.inkSoft }}>{fmtDate(p.date)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-5">
+            <div>
+              <p className="text-xs mb-1" style={{ color: t.inkSoft }}>الدخل الشهري</p>
+              <p className="font-extrabold" style={{ color: t.ink, fontFamily: "Cairo" }}>{fmtMoney(income)}</p>
+            </div>
+            <div>
+              <p className="text-xs mb-1" style={{ color: t.inkSoft }}>الادخار</p>
+              <p className="font-extrabold" style={{ color: t.ink, fontFamily: "Cairo" }}>{fmtMoney(db.finance.apartmentGoal.current)}</p>
+            </div>
+            <div>
+              <p className="text-xs mb-1" style={{ color: t.inkSoft }}>ساعات التعلم</p>
+              <p className="font-extrabold" style={{ color: t.ink, fontFamily: "Cairo" }}>{learningHours}</p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex justify-between mb-1">
+              <span className="text-xs" style={{ color: t.inkSoft }}>تقدم شراء الشقة</span>
+              <span className="text-xs font-bold" style={{ color: t.ink }}>{pct(db.finance.apartmentGoal.current, db.finance.apartmentGoal.target)}%</span>
+            </div>
+            <ProgressBar t={t} percent={pct(db.finance.apartmentGoal.current, db.finance.apartmentGoal.target)} color={t.night} />
+          </div>
+          <div className="mt-3">
+            <div className="flex justify-between mb-1">
+              <span className="text-xs" style={{ color: t.inkSoft }}>تقدم حفظ القرآن</span>
+              <span className="text-xs font-bold" style={{ color: t.ink }}>{hifzPct}%</span>
+            </div>
+            <ProgressBar t={t} percent={hifzPct} color={t.gold} />
+          </div>
+        </Card>
+
+        <Card t={t} className="p-5 flex flex-col items-center justify-center">
+          <h3 className="font-bold mb-2 self-start" style={{ color: t.ink, fontFamily: "Cairo" }}>مؤشر الحياة العام</h3>
+          <LifeStar t={t} domains={domains} />
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- المهام ---------------- */
+const PRIORITIES = ["عالية", "متوسطة", "منخفضة"];
+const STATUSES = ["لم تبدأ", "قيد التنفيذ", "مكتملة"];
+const PRIORITY_COLOR = (t, p) => (p === "عالية" ? t.danger : p === "متوسطة" ? t.gold : t.inkSoft);
+
+function TasksView({ t, db, update }) {
+  const [view, setView] = useState("اليوم");
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState({ priority: "متوسطة", status: "لم تبدأ", date: todayISO() });
+  const [query, setQuery] = useState("");
+
+  const addTask = () => {
+    if (!(draft.title || "").trim()) return;
+    update((prev) => ({ ...prev, tasks: [{ id: uid(), ...draft }, ...prev.tasks] }));
+    setDraft({ priority: "متوسطة", status: "لم تبدأ", date: todayISO() });
+    setOpen(false);
+  };
+  const setStatus = (id, status) => update((prev) => ({ ...prev, tasks: prev.tasks.map((x) => (x.id === id ? { ...x, status } : x)) }));
+  const removeTask = (id) => update((prev) => ({ ...prev, tasks: prev.tasks.filter((x) => x.id !== id) }));
+
+  const today = todayISO();
+  const weekS = startOfWeek(new Date());
+  const weekE = endOfWeek(new Date());
+  const monthStr = today.slice(0, 7);
+
+  const filtered = useMemo(() => {
+    let list = db.tasks.filter((x) => {
+      if (view === "اليوم") return x.date === today;
+      if (view === "الأسبوع") return x.date && new Date(x.date) >= weekS && new Date(x.date) <= weekE;
+      if (view === "الشهر") return x.date && x.date.startsWith(monthStr);
+      if (view === "المتأخرة") return x.date && x.date < today && x.status !== "مكتملة";
+      if (view === "المكتملة") return x.status === "مكتملة";
+      return true;
+    });
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      list = list.filter((x) => (x.title || "").toLowerCase().includes(q) || (x.domain || "").toLowerCase().includes(q) || (x.project || "").toLowerCase().includes(q));
+    }
+    return list;
+  }, [db.tasks, view, query]);
+
+  const tabs = ["اليوم", "الأسبوع", "الشهر", "المتأخرة", "المكتملة"];
+
+  return (
+    <div>
+      <SectionTitle t={t} title="المهام" subtitle="إدارة مهامك اليومية بأولوية ووضوح" icon={CheckSquare} />
+
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex gap-1 p-1 rounded-xl" style={{ background: t.surfaceAlt }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setView(tab)}
+              className="px-3 py-1.5 rounded-lg text-sm font-bold transition-colors"
+              style={{ background: view === tab ? t.surface : "transparent", color: view === tab ? t.accent : t.inkSoft, fontFamily: "Cairo" }}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={13} style={{ position: "absolute", right: 10, top: 11, color: t.inkSoft }} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="ابحث في المهام..."
+              className="text-sm pr-7 pl-3 py-2 rounded-lg border outline-none"
+              style={{ background: t.bg, borderColor: t.border, color: t.ink, width: 160 }}
+            />
+          </div>
+          <PrimaryBtn t={t} icon={open ? X : Plus} onClick={() => setOpen((v) => !v)}>مهمة جديدة</PrimaryBtn>
+        </div>
+      </div>
+
+      {open && (
+        <Card t={t} className="p-4 mb-4">
+          <div className="grid md:grid-cols-3 gap-3">
+            <div className="md:col-span-2">
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>اسم المهمة</label>
+              <TextInput t={t} value={draft.title || ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="مثال: تجهيز عرض السعر لعميل جديد" />
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>التاريخ</label>
+              <TextInput t={t} type="date" value={draft.date || ""} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>الأولوية</label>
+              <Select t={t} value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value })}>
+                {PRIORITIES.map((p) => (<option key={p} value={p}>{p}</option>))}
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>المجال</label>
+              <TextInput t={t} value={draft.domain || ""} onChange={(e) => setDraft({ ...draft, domain: e.target.value })} placeholder="مثال: الميديا، شخصي" />
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>المشروع</label>
+              <TextInput t={t} value={draft.project || ""} onChange={(e) => setDraft({ ...draft, project: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>الوقت المتوقع (دقيقة)</label>
+              <TextInput t={t} type="number" value={draft.estTime || ""} onChange={(e) => setDraft({ ...draft, estTime: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>الوقت الفعلي (دقيقة)</label>
+              <TextInput t={t} type="number" value={draft.actualTime || ""} onChange={(e) => setDraft({ ...draft, actualTime: e.target.value })} />
+            </div>
+            <div className="md:col-span-3">
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>الوصف / ملاحظات</label>
+              <TextArea t={t} rows={2} value={draft.desc || ""} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex justify-end mt-3">
+            <PrimaryBtn t={t} onClick={addTask} icon={Check}>حفظ المهمة</PrimaryBtn>
+          </div>
+        </Card>
+      )}
+
+      {filtered.length === 0 ? (
+        <Card t={t} className="p-8 text-center">
+          <p style={{ color: t.inkSoft }}>لا توجد مهام في هذا العرض.</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((task) => (
+            <Card key={task.id} t={t} className="p-4">
+              <div className="flex items-start gap-3">
+                <button
+                  onClick={() => setStatus(task.id, task.status === "مكتملة" ? "لم تبدأ" : "مكتملة")}
+                  className="mt-0.5 shrink-0"
+                  style={{ color: task.status === "مكتملة" ? t.accent : t.inkSoft }}
+                >
+                  {task.status === "مكتملة" ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-sm" style={{ color: t.ink, textDecoration: task.status === "مكتملة" ? "line-through" : "none", fontFamily: "Cairo" }}>{task.title}</p>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ color: PRIORITY_COLOR(t, task.priority), background: t.surfaceAlt }}>{task.priority}</span>
+                    {task.date && task.date < today && task.status !== "مكتملة" && (
+                      <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ color: t.danger, background: t.dangerSoft }}>
+                        <AlertTriangle size={11} /> متأخرة
+                      </span>
+                    )}
+                  </div>
+                  {task.desc && <p className="text-xs mt-1" style={{ color: t.inkSoft }}>{task.desc}</p>}
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
+                    {task.date && <span className="text-xs" style={{ color: t.inkSoft }}>📅 {fmtDate(task.date)}</span>}
+                    {task.domain && <span className="text-xs" style={{ color: t.inkSoft }}>🏷 {task.domain}</span>}
+                    {task.project && <span className="text-xs" style={{ color: t.inkSoft }}>📁 {task.project}</span>}
+                    {task.estTime && <span className="text-xs" style={{ color: t.inkSoft }}>⏱ {task.estTime} د</span>}
+                  </div>
+                </div>
+                <Select t={t} value={task.status} onChange={(e) => setStatus(task.id, e.target.value)} style={{ width: "auto" }}>
+                  {STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
+                </Select>
+                <IconBtn t={t} danger onClick={() => removeTask(task.id)}>
+                  <Trash2 size={15} />
+                </IconBtn>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- المشاريع ---------------- */
+function ProjectsView({ t, db, update }) {
+  const add = (item) => update((p) => ({ ...p, projects: [item, ...p.projects] }));
+  const del = (id) => update((p) => ({ ...p, projects: p.projects.filter((x) => x.id !== id) }));
+  const setProgress = (id, progress) => update((p) => ({ ...p, projects: p.projects.map((x) => (x.id === id ? { ...x, progress } : x)) }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="المشاريع" subtitle="تتبّع كل مشروع من البداية حتى التسليم" icon={FolderKanban} />
+      <RecordList
+        t={t}
+        title="قائمة المشاريع"
+        icon={FolderKanban}
+        items={db.projects}
+        onAdd={add}
+        onDelete={del}
+        fields={[
+          { key: "name", label: "اسم المشروع" },
+          { key: "client", label: "العميل" },
+          { key: "deadline", label: "الموعد النهائي", type: "date" },
+          { key: "value", label: "القيمة" },
+          { key: "stage", label: "المرحلة", type: "select", options: ["تخطيط", "تنفيذ", "مراجعة", "تسليم"] },
+          { key: "notes", label: "ملاحظات" },
+        ]}
+        renderExtra={(it) => (
+          <div className="mt-2 max-w-xs">
+            <div className="flex items-center gap-2">
+              <ProgressBar t={t} percent={Number(it.progress) || 0} />
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={it.progress || 0}
+                onChange={(e) => setProgress(it.id, e.target.value)}
+                className="w-14 text-xs px-1 py-0.5 rounded border outline-none"
+                style={{ borderColor: t.border, background: t.bg, color: t.ink }}
+              />
+              <span className="text-xs" style={{ color: t.inkSoft }}>%</span>
+            </div>
+          </div>
+        )}
+      />
+    </div>
+  );
+}
+
+/* ---------------- العملاء ---------------- */
+function ClientsView({ t, db, update }) {
+  const add = (item) => update((p) => ({ ...p, clients: [item, ...p.clients] }));
+  const del = (id) => update((p) => ({ ...p, clients: p.clients.filter((x) => x.id !== id) }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="العملاء" subtitle="سجل كامل بعملائك ومشاريعهم" icon={Users} />
+      <RecordList
+        t={t}
+        title="قائمة العملاء"
+        icon={Users}
+        items={db.clients}
+        onAdd={add}
+        onDelete={del}
+        fields={[
+          { key: "name", label: "اسم العميل" },
+          { key: "phone", label: "رقم الهاتف" },
+          { key: "email", label: "البريد" },
+          { key: "company", label: "الشركة" },
+          { key: "lastContact", label: "آخر تواصل", type: "date" },
+        ]}
+        renderExtra={(it) => {
+          const clientProjects = db.projects.filter((p) => p.client === it.name);
+          const total = clientProjects.reduce((s, p) => s + (Number(p.value) || 0), 0);
+          return (
+            <p className="text-xs mt-1" style={{ color: t.inkSoft }}>{clientProjects.length} مشروع — إجمالي {fmtMoney(total)}</p>
+          );
+        }}
+      />
+    </div>
+  );
+}
+
+/* ---------------- شركة الميديا ---------------- */
+function MediaView({ t, db, update }) {
+  const kinds = [
+    { key: "خدمة", label: "الخدمات" },
+    { key: "عقد", label: "العقود" },
+    { key: "عرض سعر", label: "عروض الأسعار" },
+    { key: "فاتورة", label: "الفواتير" },
+  ];
+  const add = (kind) => (item) => update((p) => ({ ...p, mediaItems: [{ ...item, kind }, ...p.mediaItems] }));
+  const del = (id) => update((p) => ({ ...p, mediaItems: p.mediaItems.filter((x) => x.id !== id) }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="شركة الميديا" subtitle="الخدمات، العقود، عروض الأسعار، والفواتير" icon={Building2} />
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        {kinds.map((k) => (
+          <RecordList
+            key={k.key}
+            t={t}
+            title={k.label}
+            icon={k.key === "فاتورة" ? Receipt : FileText}
+            items={db.mediaItems.filter((x) => x.kind === k.key)}
+            onAdd={add(k.key)}
+            onDelete={del}
+            fields={[
+              { key: "title", label: "العنوان" },
+              { key: "client", label: "العميل" },
+              { key: "amount", label: "المبلغ" },
+              { key: "status", label: "الحالة", type: "select", options: ["قيد الإعداد", "مُرسل", "مقبول", "مدفوع"] },
+            ]}
+          />
+        ))}
+      </div>
+      <RecordList
+        t={t}
+        title="البورتفوليو"
+        icon={ImageIcon}
+        items={db.portfolio}
+        onAdd={(item) => update((p) => ({ ...p, portfolio: [item, ...p.portfolio] }))}
+        onDelete={(id) => update((p) => ({ ...p, portfolio: p.portfolio.filter((x) => x.id !== id) }))}
+        fields={[
+          { key: "title", label: "عنوان العمل" },
+          { key: "link", label: "الرابط" },
+          { key: "notes", label: "ملاحظات" },
+        ]}
+      />
+    </div>
+  );
+}
+
+/* ---------------- صناعة المحتوى ---------------- */
+const CONTENT_STAGES = ["فكرة", "سكريبت", "تصوير", "مونتاج", "مراجعة", "منشور"];
+function ContentView({ t, db, update }) {
+  const add = (item) => update((p) => ({ ...p, contentIdeas: [{ ...item, stage: item.stage || "فكرة" }, ...p.contentIdeas] }));
+  const del = (id) => update((p) => ({ ...p, contentIdeas: p.contentIdeas.filter((x) => x.id !== id) }));
+  const setStage = (id, stage) => update((p) => ({ ...p, contentIdeas: p.contentIdeas.map((x) => (x.id === id ? { ...x, stage } : x)) }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="صناعة المحتوى" subtitle="من بنك الأفكار حتى النشر وتحليل الأداء" icon={Video} />
+      <Card t={t} className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold" style={{ color: t.ink, fontFamily: "Cairo" }}>بنك الأفكار وتقويم النشر</h3>
+        </div>
+        <RecordList
+          t={t}
+          title=""
+          items={db.contentIdeas}
+          onAdd={add}
+          onDelete={del}
+          fields={[
+            { key: "title", label: "فكرة المحتوى" },
+            { key: "platform", label: "المنصة" },
+            { key: "publishDate", label: "تاريخ النشر", type: "date" },
+            { key: "stage", label: "المرحلة", type: "select", options: CONTENT_STAGES },
+            { key: "notes", label: "ملاحظات" },
+          ]}
+          renderExtra={(it) => (
+            <div className="flex gap-1 mt-2 flex-wrap">
+              {CONTENT_STAGES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStage(it.id, s)}
+                  className="text-[11px] px-2 py-0.5 rounded-full border"
+                  style={{ borderColor: it.stage === s ? t.accent : t.border, color: it.stage === s ? t.accent : t.inkSoft, background: it.stage === s ? t.accentSoft : "transparent" }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        />
+      </Card>
+    </div>
+  );
+}
+
+/* ---------------- البراند الشخصي ---------------- */
+function BrandView({ t, db, update }) {
+  const b = db.brand;
+  const setB = (key, val) => update((p) => ({ ...p, brand: { ...p.brand, [key]: val } }));
+  const counters = [
+    { key: "videos", label: "عدد الفيديوهات" },
+    { key: "reels", label: "عدد الريلز" },
+    { key: "contentClients", label: "عملاء من المحتوى" },
+    { key: "sponsorships", label: "عدد الرعايات" },
+    { key: "productReviews", label: "منتجات تمت مراجعتها" },
+  ];
+  const addTarget = (item) => update((p) => ({ ...p, brand: { ...p.brand, targets: [item, ...p.brand.targets] } }));
+  const delTarget = (id) => update((p) => ({ ...p, brand: { ...p.brand, targets: p.brand.targets.filter((x) => x.id !== id) } }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="البراند الشخصي" subtitle="نمو حضورك الشخصي رقمًا برقم" icon={Sparkles} />
+      <Card t={t} className="p-5 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {counters.map((c) => (
+            <div key={c.key}>
+              <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>{c.label}</label>
+              <TextInput t={t} type="number" value={b[c.key]} onChange={(e) => setB(c.key, e.target.value)} />
+            </div>
+          ))}
+        </div>
+      </Card>
+      <RecordList
+        t={t}
+        title="الشركات المستهدفة"
+        icon={Target}
+        items={b.targets}
+        onAdd={addTarget}
+        onDelete={delTarget}
+        fields={[{ key: "name", label: "اسم الشركة" }, { key: "notes", label: "ملاحظات" }]}
+      />
+    </div>
+  );
+}
+
+/* ---------------- أدوات الذكاء الاصطناعي ---------------- */
+function AIToolsView({ t, db, update }) {
+  const add = (item) => update((p) => ({ ...p, aiTools: [item, ...p.aiTools] }));
+  const del = (id) => update((p) => ({ ...p, aiTools: p.aiTools.filter((x) => x.id !== id) }));
+  return (
+    <div>
+      <SectionTitle t={t} title="أدوات الذكاء الاصطناعي" subtitle="قاعدة بياناتك الكاملة لكل أداة تستخدمها" icon={Bot} />
+      <RecordList
+        t={t}
+        title="الأدوات"
+        icon={Bot}
+        items={db.aiTools}
+        onAdd={add}
+        onDelete={del}
+        fields={[
+          { key: "name", label: "الاسم" },
+          { key: "url", label: "الرابط" },
+          { key: "category", label: "الفئة" },
+          { key: "price", label: "السعر" },
+          { key: "used", label: "هل استخدمتها؟", type: "select", options: ["نعم", "لا"] },
+          { key: "rating", label: "التقييم (1-5)", type: "number" },
+          { key: "bestUse", label: "أفضل استخدام" },
+          { key: "notes", label: "ملاحظات" },
+        ]}
+        renderExtra={(it) => it.rating && (
+          <div className="flex gap-0.5 mt-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} size={12} fill={i < Number(it.rating) ? t.gold : "none"} color={t.gold} />
+            ))}
+          </div>
+        )}
+      />
+    </div>
+  );
+}
+
+/* ---------------- المعدات ---------------- */
+function EquipmentView({ t, db, update }) {
+  const add = (item) => update((p) => ({ ...p, equipment: [item, ...p.equipment] }));
+  const del = (id) => update((p) => ({ ...p, equipment: p.equipment.filter((x) => x.id !== id) }));
+  return (
+    <div>
+      <SectionTitle t={t} title="المعدات" subtitle="كاميرات، عدسات، وكل ما تملكه من أجهزة العمل" icon={Camera} />
+      <RecordList
+        t={t}
+        title="قائمة المعدات"
+        icon={Camera}
+        items={db.equipment}
+        onAdd={add}
+        onDelete={del}
+        fields={[
+          { key: "name", label: "اسم القطعة" },
+          { key: "category", label: "الفئة", type: "select", options: ["كاميرا", "عدسة", "ميكروفون", "إضاءة", "ترايبود", "حقيبة", "كمبيوتر", "هارد"] },
+          { key: "purchaseDate", label: "تاريخ الشراء", type: "date" },
+          { key: "warranty", label: "الضمان حتى", type: "date" },
+        ]}
+        renderExtra={(it) => {
+          if (!it.warranty) return null;
+          const isExpired = it.warranty < todayISO();
+          return (
+            <span className="text-xs mt-1 inline-block px-2 py-0.5 rounded-full" style={{ color: isExpired ? t.danger : t.accent, background: isExpired ? t.dangerSoft : t.accentSoft }}>
+              {isExpired ? "الضمان منتهٍ" : "الضمان ساري"}
+            </span>
+          );
+        }}
+      />
+    </div>
+  );
+}
+
+/* ---------------- التعلم ---------------- */
+function LearningView({ t, db, update }) {
+  const addCat = (item) => update((p) => ({ ...p, learningCategories: [...p.learningCategories, { ...item, hours: 0 }] }));
+  const delCat = (id) => update((p) => ({ ...p, learningCategories: p.learningCategories.filter((x) => x.id !== id) }));
+  const totalHours = db.learningLog.reduce((s, l) => s + (Number(l.hours) || 0), 0);
+
+  const addLog = (item) => update((p) => ({ ...p, learningLog: [{ ...item, date: item.date || todayISO() }, ...p.learningLog] }));
+  const delLog = (id) => update((p) => ({ ...p, learningLog: p.learningLog.filter((x) => x.id !== id) }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="التعلم" subtitle={`مجموع ساعات التعلم المسجلة: ${totalHours}`} icon={GraduationCap} />
+      <Card t={t} className="p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold" style={{ color: t.ink, fontFamily: "Cairo" }}>مجالات التعلم</h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {db.learningCategories.map((c) => (
+            <span key={c.id} className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full" style={{ background: t.surfaceAlt, color: t.ink }}>
+              {c.name}
+              <button onClick={() => delCat(c.id)} style={{ color: t.inkSoft }}><X size={12} /></button>
+            </span>
+          ))}
+          <AddInline t={t} onAdd={(name) => addCat({ id: uid(), name })} placeholder="مجال جديد" />
+        </div>
+      </Card>
+      <RecordList
+        t={t}
+        title="سجل ساعات التعلم"
+        icon={Clock}
+        items={db.learningLog}
+        onAdd={addLog}
+        onDelete={delLog}
+        fields={[
+          { key: "category", label: "المجال", type: "select", options: db.learningCategories.map((c) => c.name) },
+          { key: "hours", label: "عدد الساعات", type: "number" },
+          { key: "date", label: "التاريخ", type: "date" },
+          { key: "notes", label: "ملاحظات" },
+        ]}
+      />
+    </div>
+  );
+}
+
+function AddInline({ t, onAdd, placeholder }) {
+  const [v, setV] = useState("");
+  return (
+    <div className="flex items-center gap-1">
+      <TextInput
+        t={t}
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        placeholder={placeholder}
+        style={{ width: 140 }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && v.trim()) { onAdd(v.trim()); setV(""); }
+        }}
+      />
+      <IconBtn t={t} onClick={() => { if (v.trim()) { onAdd(v.trim()); setV(""); } }}>
+        <Plus size={15} />
+      </IconBtn>
+    </div>
+  );
+}
+
+/* ---------------- القرآن والدين ---------------- */
+const PRAYER_NAMES = ["الفجر", "الظهر", "العصر", "المغرب", "العشاء"];
+function DeenView({ t, db, update }) {
+  const today = todayISO();
+  const todayPrayers = db.deen.prayers[today] || [false, false, false, false, false];
+  const todayAzkar = db.deen.azkar[today] || { morning: false, evening: false };
+
+  const togglePrayer = (i) => {
+    const arr = [...todayPrayers];
+    arr[i] = !arr[i];
+    update((p) => ({ ...p, deen: { ...p.deen, prayers: { ...p.deen.prayers, [today]: arr } } }));
+  };
+  const toggleAzkar = (key) => {
+    update((p) => ({ ...p, deen: { ...p.deen, azkar: { ...p.deen.azkar, [today]: { ...todayAzkar, [key]: !todayAzkar[key] } } } }));
+  };
+  const wirdDone = !!db.deen.wird[today];
+  const toggleWird = () => update((p) => ({ ...p, deen: { ...p.deen, wird: { ...p.deen.wird, [today]: !wirdDone } } }));
+
+  const setHifz = (key, val) => update((p) => ({ ...p, deen: { ...p.deen, hifz: { ...p.deen.hifz, [key]: val } } }));
+  const addHifzLog = (item) => update((p) => ({ ...p, deen: { ...p.deen, hifzLog: [{ ...item, date: item.date || today }, ...p.deen.hifzLog] } }));
+  const delHifzLog = (id) => update((p) => ({ ...p, deen: { ...p.deen, hifzLog: p.deen.hifzLog.filter((x) => x.id !== id) } }));
+
+  const weeklyPrayerRate = useMemo(() => {
+    const s = startOfWeek(new Date());
+    let total = 0, done = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(s); d.setDate(s.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      const arr = db.deen.prayers[iso];
+      if (arr) { total += 5; done += arr.filter(Boolean).length; }
+    }
+    return total ? Math.round((done / total) * 100) : 0;
+  }, [db.deen.prayers]);
+
+  return (
+    <div>
+      <SectionTitle t={t} title="القرآن والدين" subtitle="الصلوات، الورد، الحفظ، والأذكار" icon={BookOpen} />
+
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        <Card t={t} className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold" style={{ color: t.ink, fontFamily: "Cairo" }}>الصلوات اليوم</h3>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: t.goldSoft, color: t.gold }}>هذا الأسبوع {weeklyPrayerRate}%</span>
+          </div>
+          <div className="grid grid-cols-5 gap-2">
+            {PRAYER_NAMES.map((name, i) => (
+              <button
+                key={name}
+                onClick={() => togglePrayer(i)}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-colors"
+                style={{ borderColor: todayPrayers[i] ? t.gold : t.border, background: todayPrayers[i] ? t.goldSoft : "transparent" }}
+              >
+                {todayPrayers[i] ? <CheckCircle2 size={18} color={t.gold} /> : <Circle size={18} color={t.inkSoft} />}
+                <span className="text-xs" style={{ color: t.ink }}>{name}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        <Card t={t} className="p-5">
+          <h3 className="font-bold mb-3" style={{ color: t.ink, fontFamily: "Cairo" }}>الورد اليومي والأذكار</h3>
+          <div className="space-y-2">
+            <button onClick={toggleWird} className="w-full flex items-center gap-2 p-3 rounded-xl border" style={{ borderColor: wirdDone ? t.gold : t.border, background: wirdDone ? t.goldSoft : "transparent" }}>
+              {wirdDone ? <CheckCircle2 size={18} color={t.gold} /> : <Circle size={18} color={t.inkSoft} />}
+              <span className="text-sm" style={{ color: t.ink }}>الورد اليومي من القرآن</span>
+            </button>
+            <button onClick={() => toggleAzkar("morning")} className="w-full flex items-center gap-2 p-3 rounded-xl border" style={{ borderColor: todayAzkar.morning ? t.gold : t.border, background: todayAzkar.morning ? t.goldSoft : "transparent" }}>
+              {todayAzkar.morning ? <CheckCircle2 size={18} color={t.gold} /> : <Circle size={18} color={t.inkSoft} />}
+              <span className="text-sm" style={{ color: t.ink }}>أذكار الصباح</span>
+            </button>
+            <button onClick={() => toggleAzkar("evening")} className="w-full flex items-center gap-2 p-3 rounded-xl border" style={{ borderColor: todayAzkar.evening ? t.gold : t.border, background: todayAzkar.evening ? t.goldSoft : "transparent" }}>
+              {todayAzkar.evening ? <CheckCircle2 size={18} color={t.gold} /> : <Circle size={18} color={t.inkSoft} />}
+              <span className="text-sm" style={{ color: t.ink }}>أذكار المساء</span>
+            </button>
+          </div>
+        </Card>
+      </div>
+
+      <Card t={t} className="p-5 mb-4">
+        <h3 className="font-bold mb-3" style={{ color: t.ink, fontFamily: "Cairo" }}>تقدم الحفظ</h3>
+        <div className="grid md:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>السورة الحالية</label>
+            <TextInput t={t} value={db.deen.hifz.surah} onChange={(e) => setHifz("surah", e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>الآية الحالية</label>
+            <TextInput t={t} value={db.deen.hifz.ayah} onChange={(e) => setHifz("ayah", e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>نسبة الحفظ %</label>
+            <TextInput t={t} type="number" value={db.deen.hifz.percent} onChange={(e) => setHifz("percent", e.target.value)} />
+          </div>
+        </div>
+        <ProgressBar t={t} percent={Number(db.deen.hifz.percent) || 0} color={t.gold} />
+      </Card>
+
+      <RecordList
+        t={t}
+        title="سجل الحفظ والمراجعة"
+        icon={BookOpen}
+        items={db.deen.hifzLog}
+        onAdd={addHifzLog}
+        onDelete={delHifzLog}
+        fields={[
+          { key: "content", label: "المحفوظ / المراجَع" },
+          { key: "date", label: "التاريخ", type: "date" },
+          { key: "type", label: "النوع", type: "select", options: ["حفظ جديد", "مراجعة"] },
+        ]}
+      />
+
+      <Card t={t} className="p-5 mt-4">
+        <h3 className="font-bold mb-2" style={{ color: t.ink, fontFamily: "Cairo" }}>ملاحظات التقدم الشهري</h3>
+        <TextArea t={t} rows={3} value={db.deen.monthlyNotes} onChange={(e) => update((p) => ({ ...p, deen: { ...p.deen, monthlyNotes: e.target.value } }))} />
+      </Card>
+    </div>
+  );
+}
+
+/* ---------------- الصحة ---------------- */
+function HealthView({ t, db, update }) {
+  const today = todayISO();
+  const sleep = db.health.sleep[today] || "";
+  const water = db.health.water[today] || 0;
+  const exercise = db.health.exercise[today] || "";
+
+  const setField = (group, val) => update((p) => ({ ...p, health: { ...p.health, [group]: { ...p.health[group], [today]: val } } }));
+  const addWeight = (item) => update((p) => ({ ...p, health: { ...p.health, weightLog: [{ ...item, date: item.date || today }, ...p.health.weightLog] } }));
+  const delWeight = (id) => update((p) => ({ ...p, health: { ...p.health, weightLog: p.health.weightLog.filter((x) => x.id !== id) } }));
+
+  const waterTarget = 8;
+
+  return (
+    <div>
+      <SectionTitle t={t} title="الصحة" subtitle="النوم، الماء، الرياضة، والوزن" icon={HeartPulse} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <Card t={t} className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <MoonIcon size={16} color={t.night} />
+            <h3 className="font-bold text-sm" style={{ color: t.ink, fontFamily: "Cairo" }}>النوم (ساعات اليوم)</h3>
+          </div>
+          <TextInput t={t} type="number" value={sleep} onChange={(e) => setField("sleep", e.target.value)} />
+        </Card>
+        <Card t={t} className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Droplet size={16} color="#4C8C6B" />
+            <h3 className="font-bold text-sm" style={{ color: t.ink, fontFamily: "Cairo" }}>المياه (أكواب اليوم)</h3>
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <IconBtn t={t} onClick={() => setField("water", Math.max(0, Number(water) - 1))}>−</IconBtn>
+            <span className="font-extrabold text-lg flex-1 text-center" style={{ color: t.ink }}>{water} / {waterTarget}</span>
+            <IconBtn t={t} onClick={() => setField("water", Number(water) + 1)}><Plus size={14} /></IconBtn>
+          </div>
+          <ProgressBar t={t} percent={Math.min(100, (Number(water) / waterTarget) * 100)} color="#4C8C6B" />
+        </Card>
+        <Card t={t} className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Dumbbell size={16} color={t.danger} />
+            <h3 className="font-bold text-sm" style={{ color: t.ink, fontFamily: "Cairo" }}>الرياضة (دقائق اليوم)</h3>
+          </div>
+          <TextInput t={t} type="number" value={exercise} onChange={(e) => setField("exercise", e.target.value)} />
+        </Card>
+      </div>
+      <RecordList
+        t={t}
+        title="سجل الوزن والتحاليل"
+        icon={Scale}
+        items={db.health.weightLog}
+        onAdd={addWeight}
+        onDelete={delWeight}
+        fields={[
+          { key: "weight", label: "الوزن (كجم)" },
+          { key: "date", label: "التاريخ", type: "date" },
+          { key: "notes", label: "ملاحظات تحاليل" },
+        ]}
+      />
+    </div>
+  );
+}
+
+/* ---------------- الأسرة ---------------- */
+function FamilyView({ t, db, update }) {
+  const addSession = (item) => update((p) => ({ ...p, family: { ...p.family, sessions: [{ ...item, date: item.date || todayISO() }, ...p.family.sessions] } }));
+  const delSession = (id) => update((p) => ({ ...p, family: { ...p.family, sessions: p.family.sessions.filter((x) => x.id !== id) } }));
+
+  const addGoal = (text) => update((p) => ({ ...p, family: { ...p.family, goals: [...p.family.goals, { id: uid(), text, done: false }] } }));
+  const toggleGoal = (id) => update((p) => ({ ...p, family: { ...p.family, goals: p.family.goals.map((g) => (g.id === id ? { ...g, done: !g.done } : g)) } }));
+  const delGoal = (id) => update((p) => ({ ...p, family: { ...p.family, goals: p.family.goals.filter((g) => g.id !== id) } }));
+
+  const addNeed = (text) => update((p) => ({ ...p, family: { ...p.family, childNeeds: [...p.family.childNeeds, { id: uid(), text }] } }));
+  const delNeed = (id) => update((p) => ({ ...p, family: { ...p.family, childNeeds: p.family.childNeeds.filter((x) => x.id !== id) } }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="الأسرة" subtitle="وقتك مع من تحب أهم استثمار" icon={Users2} />
+      <RecordList
+        t={t}
+        title="الجلسة الأسبوعية مع الزوجة"
+        icon={Users2}
+        items={db.family.sessions}
+        onAdd={addSession}
+        onDelete={delSession}
+        fields={[
+          { key: "topic", label: "موضوع الجلسة" },
+          { key: "date", label: "التاريخ", type: "date" },
+          { key: "notes", label: "ملاحظات" },
+        ]}
+      />
+      <div className="grid md:grid-cols-2 gap-4 mt-4">
+        <Card t={t} className="p-5">
+          <h3 className="font-bold mb-3" style={{ color: t.ink, fontFamily: "Cairo" }}>أهداف الأسرة</h3>
+          <div className="space-y-2 mb-3">
+            {db.family.goals.map((g) => (
+              <div key={g.id} className="flex items-center gap-2">
+                <button onClick={() => toggleGoal(g.id)} style={{ color: g.done ? t.accent : t.inkSoft }}>
+                  {g.done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                </button>
+                <span className="text-sm flex-1" style={{ color: t.ink, textDecoration: g.done ? "line-through" : "none" }}>{g.text}</span>
+                <IconBtn t={t} danger onClick={() => delGoal(g.id)}><Trash2 size={13} /></IconBtn>
+              </div>
+            ))}
+          </div>
+          <AddInline t={t} placeholder="هدف جديد" onAdd={addGoal} />
+        </Card>
+        <Card t={t} className="p-5">
+          <h3 className="font-bold mb-3" style={{ color: t.ink, fontFamily: "Cairo" }}>احتياجات الطفل</h3>
+          <div className="space-y-2 mb-3">
+            {db.family.childNeeds.map((n) => (
+              <div key={n.id} className="flex items-center gap-2">
+                <Circle size={6} fill={t.inkSoft} color={t.inkSoft} />
+                <span className="text-sm flex-1" style={{ color: t.ink }}>{n.text}</span>
+                <IconBtn t={t} danger onClick={() => delNeed(n.id)}><Trash2 size={13} /></IconBtn>
+              </div>
+            ))}
+          </div>
+          <AddInline t={t} placeholder="احتياج جديد" onAdd={addNeed} />
+        </Card>
+      </div>
+      <Card t={t} className="p-5 mt-4">
+        <h3 className="font-bold mb-2" style={{ color: t.ink, fontFamily: "Cairo" }}>ميزانية المنزل وملاحظات عامة</h3>
+        <div className="grid md:grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>ميزانية المنزل</label>
+            <TextInput t={t} value={db.family.budget} onChange={(e) => update((p) => ({ ...p, family: { ...p.family, budget: e.target.value } }))} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>ملاحظات</label>
+            <TextInput t={t} value={db.family.notes} onChange={(e) => update((p) => ({ ...p, family: { ...p.family, notes: e.target.value } }))} />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ---------------- المال ---------------- */
+function FinanceView({ t, db, update }) {
+  const addIncome = (item) => update((p) => ({ ...p, finance: { ...p.finance, income: [{ ...item, date: item.date || todayISO() }, ...p.finance.income] } }));
+  const delIncome = (id) => update((p) => ({ ...p, finance: { ...p.finance, income: p.finance.income.filter((x) => x.id !== id) } }));
+  const addExpense = (item) => update((p) => ({ ...p, finance: { ...p.finance, expenses: [{ ...item, date: item.date || todayISO() }, ...p.finance.expenses] } }));
+  const delExpense = (id) => update((p) => ({ ...p, finance: { ...p.finance, expenses: p.finance.expenses.filter((x) => x.id !== id) } }));
+
+  const totalIncome = db.finance.income.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const totalExpenses = db.finance.expenses.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+  const setGoal = (goal, key, val) => update((p) => ({ ...p, finance: { ...p.finance, [goal]: { ...p.finance[goal], [key]: val } } }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="المال" subtitle="الدخل، المصروفات، الادخار، والاستثمار الحلال" icon={Wallet} />
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <Card t={t} className="p-4">
+          <p className="text-xs mb-1" style={{ color: t.inkSoft }}>إجمالي الدخل</p>
+          <p className="text-xl font-extrabold" style={{ color: t.accent, fontFamily: "Cairo" }}>{fmtMoney(totalIncome)}</p>
+        </Card>
+        <Card t={t} className="p-4">
+          <p className="text-xs mb-1" style={{ color: t.inkSoft }}>إجمالي المصروفات</p>
+          <p className="text-xl font-extrabold" style={{ color: t.danger, fontFamily: "Cairo" }}>{fmtMoney(totalExpenses)}</p>
+        </Card>
+        <Card t={t} className="p-4">
+          <p className="text-xs mb-1" style={{ color: t.inkSoft }}>الصافي</p>
+          <p className="text-xl font-extrabold" style={{ color: t.ink, fontFamily: "Cairo" }}>{fmtMoney(totalIncome - totalExpenses)}</p>
+        </Card>
+        <Card t={t} className="p-4">
+          <p className="text-xs mb-1" style={{ color: t.inkSoft }}>صندوق الطوارئ</p>
+          <p className="text-xl font-extrabold" style={{ color: t.night, fontFamily: "Cairo" }}>{fmtMoney(db.finance.emergencyGoal.current)}</p>
+        </Card>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        {[
+          { key: "apartmentGoal", label: "ادخار الشقة", color: t.night },
+          { key: "emergencyGoal", label: "صندوق الطوارئ", color: t.gold },
+        ].map((g) => {
+          const goal = db.finance[g.key];
+          const pct = goal.target ? Math.min(100, Math.round((goal.current / goal.target) * 100)) : 0;
+          return (
+            <Card key={g.key} t={t} className="p-5">
+              <h3 className="font-bold mb-3" style={{ color: t.ink, fontFamily: "Cairo" }}>{g.label}</h3>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>الحالي</label>
+                  <TextInput t={t} type="number" value={goal.current} onChange={(e) => setGoal(g.key, "current", e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs block mb-1" style={{ color: t.inkSoft }}>الهدف</label>
+                  <TextInput t={t} type="number" value={goal.target} onChange={(e) => setGoal(g.key, "target", e.target.value)} />
+                </div>
+              </div>
+              <ProgressBar t={t} percent={pct} color={g.color} />
+              <p className="text-xs mt-1 text-left" style={{ color: t.inkSoft }}>{pct}%</p>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <RecordList
+          t={t}
+          title="الدخل"
+          icon={TrendingUp}
+          items={db.finance.income}
+          onAdd={addIncome}
+          onDelete={delIncome}
+          fields={[
+            { key: "source", label: "المصدر" },
+            { key: "amount", label: "المبلغ", type: "number" },
+            { key: "date", label: "التاريخ", type: "date" },
+          ]}
+        />
+        <RecordList
+          t={t}
+          title="المصروفات"
+          icon={Receipt}
+          items={db.finance.expenses}
+          onAdd={addExpense}
+          onDelete={delExpense}
+          fields={[
+            { key: "item", label: "البند" },
+            { key: "amount", label: "المبلغ", type: "number" },
+            { key: "date", label: "التاريخ", type: "date" },
+          ]}
+        />
+      </div>
+
+      <Card t={t} className="p-5 mt-4">
+        <h3 className="font-bold mb-2" style={{ color: t.ink, fontFamily: "Cairo" }}>ملاحظات الاستثمار الحلال</h3>
+        <TextArea t={t} rows={3} value={db.finance.investmentNotes} onChange={(e) => update((p) => ({ ...p, finance: { ...p.finance, investmentNotes: e.target.value } }))} />
+      </Card>
+    </div>
+  );
+}
+
+/* ---------------- المراجعات ---------------- */
+const REVIEW_TYPES = [
+  { key: "daily", label: "يومية" },
+  { key: "weekly", label: "أسبوعية" },
+  { key: "monthly", label: "شهرية" },
+  { key: "quarterly", label: "ربع سنوية" },
+  { key: "yearly", label: "سنوية" },
+];
+function ReviewsView({ t, db, update }) {
+  const [tab, setTab] = useState("daily");
+  const add = (item) => update((p) => ({ ...p, reviews: { ...p.reviews, [tab]: [{ ...item, date: item.date || todayISO() }, ...p.reviews[tab]] } }));
+  const del = (id) => update((p) => ({ ...p, reviews: { ...p.reviews, [tab]: p.reviews[tab].filter((x) => x.id !== id) } }));
+
+  return (
+    <div>
+      <SectionTitle t={t} title="المراجعات" subtitle="محطات للتأمل وتصحيح المسار" icon={ClipboardList} />
+      <div className="flex gap-1 p-1 rounded-xl mb-4 w-fit" style={{ background: t.surfaceAlt }}>
+        {REVIEW_TYPES.map((r) => (
+          <button
+            key={r.key}
+            onClick={() => setTab(r.key)}
+            className="px-3 py-1.5 rounded-lg text-sm font-bold"
+            style={{ background: tab === r.key ? t.surface : "transparent", color: tab === r.key ? t.accent : t.inkSoft, fontFamily: "Cairo" }}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+      <RecordList
+        t={t}
+        title={`مراجعة ${REVIEW_TYPES.find((r) => r.key === tab).label}`}
+        icon={ClipboardList}
+        items={db.reviews[tab]}
+        onAdd={add}
+        onDelete={del}
+        fields={[
+          { key: "title", label: "العنوان" },
+          { key: "date", label: "التاريخ", type: "date" },
+          { key: "content", label: "المحتوى" },
+        ]}
+      />
+    </div>
+  );
+}
+
+/* ---------------- النسخ الاحتياطي ---------------- */
+function SettingsView({ t, db, exportJSON, importJSON, lastSaved }) {
+  const fileRef = useRef(null);
+  const totalRecords =
+    db.tasks.length + db.projects.length + db.clients.length + db.aiTools.length +
+    db.equipment.length + db.contentIdeas.length + db.mediaItems.length + db.portfolio.length +
+    db.learningLog.length + db.deen.hifzLog.length + db.health.weightLog.length +
+    db.family.sessions.length + db.finance.income.length + db.finance.expenses.length;
+
+  return (
+    <div>
+      <SectionTitle t={t} title="النسخ الاحتياطي" subtitle="بياناتك محفوظة على هذا الجهاز فقط — خذ نسخة احتياطية بانتظام" icon={DownloadCloud} />
+      <Card t={t} className="p-5 mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-sm" style={{ color: t.ink }}>عدد السجلات المخزّنة حاليًا: <strong>{totalRecords}</strong></p>
+            <p className="text-xs mt-1" style={{ color: t.inkSoft }}>
+              {lastSaved ? `آخر حفظ تلقائي: ${lastSaved.toLocaleTimeString("ar-EG")}` : "لم يُحفظ أي تغيير بعد في هذه الجلسة"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <PrimaryBtn t={t} icon={Download} onClick={exportJSON}>تنزيل نسخة احتياطية</PrimaryBtn>
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border"
+              style={{ borderColor: t.border, color: t.ink, fontFamily: "Cairo" }}
+            >
+              <UploadCloud size={16} /> استعادة نسخة
+            </button>
+            <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files[0] && importJSON(e.target.files[0])} />
+          </div>
+        </div>
+      </Card>
+      <Card t={t} className="p-5">
+        <h3 className="font-bold mb-2" style={{ color: t.ink, fontFamily: "Cairo" }}>ملاحظة مهمة</h3>
+        <p className="text-sm leading-relaxed" style={{ color: t.inkSoft }}>
+          هذا التطبيق يخزّن كل بياناتك محليًا داخل متصفح جهازك (بدون خوادم أو إنترنت). إن مسحت بيانات المتصفح أو بدّلت الجهاز فستفقد البيانات ما لم تكن قد نزّلت نسخة احتياطية. يُنصح بتنزيل نسخة احتياطية أسبوعيًا على الأقل.
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================================================
+   التطبيق الرئيسي
+   ============================================================ */
+function App() {
+  useFonts();
+  const { db, update, status, lastSaved, exportJSON, importJSON } = useDB();
+  const [theme, setTheme] = useState("light");
+  const [active, setActive] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const t = PALETTES[theme];
+
+  if (status === "loading" || !db) {
+    return (
+      <div dir="rtl" className="min-h-screen flex items-center justify-center" style={{ background: PALETTES.light.bg, fontFamily: "Tajawal" }}>
+        <div className="flex flex-col items-center gap-3">
+          <Compass className="animate-spin" size={28} color={PALETTES.light.accent} />
+          <p style={{ color: PALETTES.light.inkSoft }}>جارِ تحميل نظامك الشخصي…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const activeMeta = SECTIONS.flatMap((g) => g.items).find((i) => i.id === active);
+
+  const renderSection = () => {
+    const props = { t, db, update };
+    switch (active) {
+      case "dashboard": return <Dashboard {...props} setActiveSection={setActive} />;
+      case "tasks": return <TasksView {...props} />;
+      case "projects": return <ProjectsView {...props} />;
+      case "clients": return <ClientsView {...props} />;
+      case "media": return <MediaView {...props} />;
+      case "content": return <ContentView {...props} />;
+      case "brand": return <BrandView {...props} />;
+      case "aitools": return <AIToolsView {...props} />;
+      case "equipment": return <EquipmentView {...props} />;
+      case "learning": return <LearningView {...props} />;
+      case "deen": return <DeenView {...props} />;
+      case "health": return <HealthView {...props} />;
+      case "family": return <FamilyView {...props} />;
+      case "finance": return <FinanceView {...props} />;
+      case "reviews": return <ReviewsView {...props} />;
+      case "settings": return <SettingsView t={t} db={db} exportJSON={exportJSON} importJSON={importJSON} lastSaved={lastSaved} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div dir="rtl" className="min-h-screen flex" style={{ background: t.bg, fontFamily: "Tajawal", color: t.ink }}>
+      <style>{`
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: ${t.border}; border-radius: 8px; }
+        select { -webkit-appearance: none; appearance: none; }
+        button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+          outline: 2px solid ${t.accent}; outline-offset: 1px;
+        }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+      `}</style>
+
+      <aside
+        className={`fixed lg:static top-0 bottom-0 right-0 w-72 shrink-0 border-l z-30 transition-transform duration-300 flex flex-col
+        ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+        style={{ background: t.surface, borderColor: t.border }}
+      >
+        <div className="p-5 flex items-center gap-3 border-b" style={{ borderColor: t.border }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: t.accent }}>
+            <Gem size={20} color="#fff" />
+          </div>
+          <div>
+            <p className="font-extrabold text-sm" style={{ color: t.ink, fontFamily: "Cairo" }}>عبد الرحمن OS</p>
+            <p className="text-xs" style={{ color: t.inkSoft }}>نظام تشغيل شخصي</p>
+          </div>
+        </div>
+        <nav className="flex-1 overflow-y-auto p-3 space-y-5">
+          {SECTIONS.map((group) => (
+            <div key={group.group}>
+              <p className="text-xs font-bold px-3 mb-1.5" style={{ color: t.inkSoft }}>{group.group}</p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = active === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { setActive(item.id); setSidebarOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                      style={{ background: isActive ? t.accentSoft : "transparent", color: isActive ? t.accent : t.inkSoft, fontFamily: "Cairo" }}
+                    >
+                      <Icon size={17} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+        <div className="p-3 border-t" style={{ borderColor: t.border }}>
+          <button
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold"
+            style={{ color: t.inkSoft, fontFamily: "Cairo" }}
+          >
+            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
+            {theme === "light" ? "الوضع الداكن" : "الوضع الفاتح"}
+          </button>
+        </div>
+      </aside>
+
+      {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+
+      <main className="flex-1 min-w-0">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-4 lg:px-8 py-3 border-b backdrop-blur" style={{ background: t.bg + "E6", borderColor: t.border }}>
+          <button className="lg:hidden" onClick={() => setSidebarOpen(true)} style={{ color: t.ink }}>
+            <Menu size={22} />
+          </button>
+          <div className="hidden lg:flex items-center gap-2 text-sm" style={{ color: t.inkSoft }}>
+            <HomeIcon size={14} />
+            <ChevronLeft size={14} />
+            <span style={{ color: t.ink, fontWeight: 700 }}>{activeMeta?.label}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-3 py-1.5 rounded-full" style={{ background: t.accentSoft, color: t.accent }}>
+              {new Date().toLocaleDateString("ar-EG", { weekday: "long" })}
+            </span>
+          </div>
+        </header>
+        <div className="p-4 lg:p-8 max-w-6xl mx-auto">{renderSection()}</div>
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
