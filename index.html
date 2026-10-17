@@ -1,0 +1,3776 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>عبد الرحمن OS — نظام تشغيل شخصي</title>
+<meta name="description" content="نظام تشغيل شخصي يجمع المهام، المشاريع، شركة الميديا، صناعة المحتوى، التعلم، الدين، الصحة، الأسرة، والمال." />
+<meta name="theme-color" content="#2F5D53" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="عبد الرحمن OS" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@400;500;700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; overscroll-behavior-y: none; }
+  #root { min-height: 100vh; }
+  /* iOS safe-area padding so the sidebar/header aren't hidden under notches */
+  @supports (padding: max(0px)) {
+    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  }
+  .ms-ico {
+    font-family: 'Material Symbols Rounded';
+    font-weight: normal; font-style: normal;
+    display: inline-flex; align-items: center; justify-content: center;
+    line-height: 1; letter-spacing: normal; text-transform: none;
+    white-space: nowrap; direction: ltr; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F5F6F3;font-family:sans-serif;color:#5B6570;">
+    جارِ تحميل نظامك الشخصي…
+  </div>
+</div>
+
+<script>
+  /* ============================================================
+     طبقة تخزين محلية دائمة على الجهاز (تحاكي واجهة window.storage
+     المستخدمة في مسودة الـ artifact الأصلية، لكن بدون اتصال إنترنت)
+     ============================================================ */
+  (function () {
+    const NS = "aros_storage__";
+    window.storage = {
+      async get(key /*, shared */) {
+        const raw = localStorage.getItem(NS + key);
+        if (raw === null) throw new Error("key not found");
+        return { key, value: raw, shared: false };
+      },
+      async set(key, value /*, shared */) {
+        localStorage.setItem(NS + key, value);
+        return { key, value, shared: false };
+      },
+      async delete(key /*, shared */) {
+        const existed = localStorage.getItem(NS + key) !== null;
+        localStorage.removeItem(NS + key);
+        return { key, deleted: existed, shared: false };
+      },
+      async list(prefix /*, shared */) {
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(NS)) {
+            const clean = k.slice(NS.length);
+            if (!prefix || clean.startsWith(prefix)) keys.push(clean);
+          }
+        }
+        return { keys, prefix, shared: false };
+      },
+    };
+  })();
+
+  // تسجيل الـ Service Worker للعمل بدون إنترنت وقابلية التثبيت كتطبيق
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
+
+<script>
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+var _excluded = ["t"],
+  _excluded2 = ["t"],
+  _excluded3 = ["t", "children"];
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
+function _objectWithoutProperties(e, t) { if (null == e) return {}; var o, r, i = _objectWithoutPropertiesLoose(e, t); if (Object.getOwnPropertySymbols) { var n = Object.getOwnPropertySymbols(e); for (r = 0; r < n.length; r++) o = n[r], -1 === t.indexOf(o) && {}.propertyIsEnumerable.call(e, o) && (i[o] = e[o]); } return i; }
+function _objectWithoutPropertiesLoose(r, e) { if (null == r) return {}; var t = {}; for (var n in r) if ({}.hasOwnProperty.call(r, n)) { if (-1 !== e.indexOf(n)) continue; t[n] = r[n]; } return t; }
+function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i.return) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
+function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t.return && (u = t.return(), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, e) { if ("object" != _typeof(t) || !t) return t; var r; if ("undefined" != typeof Symbol && void 0 !== (r = t[Symbol.toPrimitive])) { var i = r.call(t, e || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === e ? String : Number)(t); }
+var _React = React,
+  useState = _React.useState,
+  useEffect = _React.useEffect,
+  useMemo = _React.useMemo,
+  useRef = _React.useRef,
+  useCallback = _React.useCallback;
+
+/* أيقونات محلية (Material Symbols Rounded) بدل مكتبة خارجية */
+function Ico(_ref) {
+  var name = _ref.name,
+    _ref$size = _ref.size,
+    size = _ref$size === void 0 ? 18 : _ref$size,
+    color = _ref.color,
+    style = _ref.style,
+    _ref$className = _ref.className,
+    className = _ref$className === void 0 ? "" : _ref$className,
+    fill = _ref.fill;
+  var filled = fill && fill !== "none";
+  return /*#__PURE__*/React.createElement("span", {
+    className: "ms-ico " + className,
+    style: Object.assign({
+      fontSize: size,
+      width: size,
+      height: size,
+      color: color || "currentColor",
+      fontVariationSettings: filled ? "'FILL' 1" : "'FILL' 0"
+    }, style || {})
+  }, name);
+}
+function iconFactory(name, filledName) {
+  return function IconCmp(props) {
+    var filled = props.fill && props.fill !== "none";
+    return /*#__PURE__*/React.createElement(Ico, _objectSpread(_objectSpread({}, props), {}, {
+      name: filled && filledName ? filledName : name
+    }));
+  };
+}
+var LayoutDashboard = iconFactory("dashboard");
+var CheckSquare = iconFactory("check_box");
+var FolderKanban = iconFactory("view_kanban");
+var Users = iconFactory("group");
+var Building2 = iconFactory("apartment");
+var Video = iconFactory("videocam");
+var Sparkles = iconFactory("auto_awesome");
+var Bot = iconFactory("smart_toy");
+var Camera = iconFactory("photo_camera");
+var GraduationCap = iconFactory("school");
+var BookOpen = iconFactory("menu_book");
+var HeartPulse = iconFactory("cardiology");
+var Users2 = iconFactory("groups");
+var Wallet = iconFactory("account_balance_wallet");
+var ClipboardList = iconFactory("checklist");
+var Sun = iconFactory("light_mode");
+var Moon = iconFactory("dark_mode");
+var Plus = iconFactory("add");
+var Trash2 = iconFactory("delete");
+var X = iconFactory("close");
+var Check = iconFactory("check");
+var ChevronLeft = iconFactory("chevron_left");
+var Clock = iconFactory("schedule");
+var TrendingUp = iconFactory("trending_up");
+var Menu = iconFactory("menu");
+var Circle = iconFactory("radio_button_unchecked", "circle");
+var CheckCircle2 = iconFactory("check_circle");
+var AlertTriangle = iconFactory("warning");
+var Star = iconFactory("star");
+var Droplet = iconFactory("water_drop");
+var MoonIcon = iconFactory("bedtime");
+var Dumbbell = iconFactory("fitness_center");
+var Scale = iconFactory("monitor_weight");
+var Compass = iconFactory("explore");
+var Gem = iconFactory("diamond");
+var Briefcase = iconFactory("work");
+var FileText = iconFactory("description");
+var Receipt = iconFactory("receipt_long");
+var ImageIcon = iconFactory("image");
+var Target = iconFactory("track_changes");
+var HomeIcon = iconFactory("home");
+var Search = iconFactory("search");
+var Download = iconFactory("download");
+var DownloadCloud = iconFactory("cloud_download");
+var UploadCloud = iconFactory("cloud_upload");
+
+/* ============================================================
+   عبد الرحمن OS — نظام تشغيل شخصي
+   هوية بصرية: أزرق ليلي عميق + أخضر نمو هادئ + ذهبي للإنجاز الروحي
+   خط العرض: Cairo (عناوين) + Tajawal (نصوص)
+   العنصر المميز: "مؤشر الحياة" — نجمة شعاعية هندسية تلخّص التوازن
+   نسخة قابلة للتثبيت (PWA) — التخزين محلي على الجهاز بالكامل
+   ============================================================ */
+
+var FONT_LINK_ID = "aros-fonts";
+function useFonts() {
+  useEffect(function () {
+    if (document.getElementById(FONT_LINK_ID)) return;
+    var link = document.createElement("link");
+    link.id = FONT_LINK_ID;
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@400;500;700&display=swap";
+    document.head.appendChild(link);
+  }, []);
+}
+
+/* ---------------- الألوان (فاتح / داكن) ---------------- */
+var PALETTES = {
+  light: {
+    bg: "#F5F6F3",
+    surface: "#FFFFFF",
+    surfaceAlt: "#EFF1EC",
+    border: "#E3E5DF",
+    ink: "#141B22",
+    inkSoft: "#5B6570",
+    accent: "#2F5D53",
+    accentSoft: "#DCEAE4",
+    gold: "#B0793B",
+    goldSoft: "#F3E6D2",
+    danger: "#B3462C",
+    dangerSoft: "#F5E1DA",
+    night: "#2C3E52",
+    nightSoft: "#E4E9EF"
+  },
+  dark: {
+    bg: "#10151A",
+    surface: "#171F26",
+    surfaceAlt: "#1E2830",
+    border: "#28333C",
+    ink: "#EDEFEF",
+    inkSoft: "#93A0AA",
+    accent: "#5BA394",
+    accentSoft: "#1D3630",
+    gold: "#D4A15C",
+    goldSoft: "#3A2E1C",
+    danger: "#E17358",
+    dangerSoft: "#3A2420",
+    night: "#7C93AE",
+    nightSoft: "#212C38"
+  }
+};
+var uid = function uid() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+};
+var todayISO = function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+};
+var fmtDate = function fmtDate(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso + "T00:00:00").toLocaleDateString("ar-EG", {
+      day: "numeric",
+      month: "long"
+    });
+  } catch (_unused) {
+    return iso;
+  }
+};
+var fmtMoney = function fmtMoney(n) {
+  var v = Number(n) || 0;
+  return v.toLocaleString("ar-EG") + " ر.س";
+};
+var startOfWeek = function startOfWeek(d) {
+  var date = new Date(d);
+  var day = date.getDay();
+  date.setDate(date.getDate() - day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+var endOfWeek = function endOfWeek(d) {
+  var s = startOfWeek(d);
+  var e = new Date(s);
+  e.setDate(e.getDate() + 6);
+  e.setHours(23, 59, 59, 999);
+  return e;
+};
+
+/* ---------------- تخزين دائم ---------------- */
+var STORAGE_KEY = "life-os-db-v1";
+function emptyDB() {
+  return {
+    tasks: [],
+    projects: [],
+    clients: [],
+    aiTools: [],
+    equipment: [],
+    contentIdeas: [],
+    mediaItems: [],
+    portfolio: [],
+    brand: {
+      videos: 0,
+      reels: 0,
+      contentClients: 0,
+      sponsorships: 0,
+      productReviews: 0,
+      targets: []
+    },
+    learningCategories: [{
+      id: uid(),
+      name: "الذكاء الاصطناعي",
+      hours: 0
+    }, {
+      id: uid(),
+      name: "التصميم",
+      hours: 0
+    }, {
+      id: uid(),
+      name: "اللغة الإنجليزية",
+      hours: 0
+    }],
+    learningLog: [],
+    deen: {
+      prayers: {},
+      wird: {},
+      azkar: {},
+      hifz: {
+        surah: "",
+        ayah: "",
+        percent: 0
+      },
+      hifzLog: [],
+      monthlyNotes: ""
+    },
+    health: {
+      sleep: {},
+      water: {},
+      exercise: {},
+      weightLog: []
+    },
+    family: {
+      sessions: [],
+      goals: [],
+      childNeeds: [],
+      budget: "",
+      events: [],
+      notes: ""
+    },
+    finance: {
+      income: [],
+      expenses: [],
+      apartmentGoal: {
+        target: 0,
+        current: 0
+      },
+      emergencyGoal: {
+        target: 0,
+        current: 0
+      },
+      investmentNotes: ""
+    },
+    reviews: {
+      daily: [],
+      weekly: [],
+      monthly: [],
+      quarterly: [],
+      yearly: []
+    },
+    habits: [{
+      id: uid(),
+      name: "قراءة",
+      done: {}
+    }, {
+      id: uid(),
+      name: "رياضة",
+      done: {}
+    }, {
+      id: uid(),
+      name: "لا هاتف بعد العشاء",
+      done: {}
+    }]
+  };
+}
+function useDB() {
+  var _useState = useState(null),
+    _useState2 = _slicedToArray(_useState, 2),
+    db = _useState2[0],
+    setDB = _useState2[1];
+  var _useState3 = useState("loading"),
+    _useState4 = _slicedToArray(_useState3, 2),
+    status = _useState4[0],
+    setStatus = _useState4[1];
+  var _useState5 = useState(null),
+    _useState6 = _slicedToArray(_useState5, 2),
+    lastSaved = _useState6[0],
+    setLastSaved = _useState6[1];
+  var saveTimer = useRef(null);
+  useEffect(function () {
+    _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
+      var res, parsed, _t;
+      return _regenerator().w(function (_context) {
+        while (1) switch (_context.p = _context.n) {
+          case 0:
+            _context.p = 0;
+            _context.n = 1;
+            return window.storage.get(STORAGE_KEY, false);
+          case 1:
+            res = _context.v;
+            if (res && res.value) {
+              parsed = JSON.parse(res.value);
+              setDB(_objectSpread(_objectSpread({}, emptyDB()), parsed));
+            } else {
+              setDB(emptyDB());
+            }
+            setStatus("ready");
+            _context.n = 3;
+            break;
+          case 2:
+            _context.p = 2;
+            _t = _context.v;
+            setDB(emptyDB());
+            setStatus("ready");
+          case 3:
+            return _context.a(2);
+        }
+      }, _callee, null, [[0, 2]]);
+    }))();
+  }, []);
+  var update = useCallback(function (updater) {
+    setDB(function (prev) {
+      var next = typeof updater === "function" ? updater(prev) : updater;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2() {
+        var _t2;
+        return _regenerator().w(function (_context2) {
+          while (1) switch (_context2.p = _context2.n) {
+            case 0:
+              _context2.p = 0;
+              _context2.n = 1;
+              return window.storage.set(STORAGE_KEY, JSON.stringify(next), false);
+            case 1:
+              setLastSaved(new Date());
+              _context2.n = 3;
+              break;
+            case 2:
+              _context2.p = 2;
+              _t2 = _context2.v;
+            case 3:
+              return _context2.a(2);
+          }
+        }, _callee2, null, [[0, 2]]);
+      })), 350);
+      return next;
+    });
+  }, []);
+  var exportJSON = useCallback(function () {
+    if (!db) return;
+    var blob = new Blob([JSON.stringify(db, null, 2)], {
+      type: "application/json"
+    });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "aros-backup-".concat(todayISO(), ".json");
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [db]);
+  var importJSON = useCallback(function (file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(reader.result);
+        update(function () {
+          return _objectSpread(_objectSpread({}, emptyDB()), parsed);
+        });
+      } catch (_unused4) {
+        alert("تعذّرت قراءة الملف — تأكد أنه نسخة احتياطية صحيحة من التطبيق.");
+      }
+    };
+    reader.readAsText(file);
+  }, [update]);
+  return {
+    db: db,
+    update: update,
+    status: status,
+    lastSaved: lastSaved,
+    exportJSON: exportJSON,
+    importJSON: importJSON
+  };
+}
+
+/* ---------------- أقسام التطبيق ---------------- */
+var SECTIONS = [{
+  group: "الرئيسية",
+  items: [{
+    id: "dashboard",
+    label: "لوحة التحكم",
+    icon: LayoutDashboard
+  }]
+}, {
+  group: "الإنتاجية",
+  items: [{
+    id: "tasks",
+    label: "المهام",
+    icon: CheckSquare
+  }, {
+    id: "projects",
+    label: "المشاريع",
+    icon: FolderKanban
+  }, {
+    id: "clients",
+    label: "العملاء",
+    icon: Users
+  }]
+}, {
+  group: "الأعمال",
+  items: [{
+    id: "media",
+    label: "شركة الميديا",
+    icon: Building2
+  }, {
+    id: "content",
+    label: "صناعة المحتوى",
+    icon: Video
+  }, {
+    id: "brand",
+    label: "البراند الشخصي",
+    icon: Sparkles
+  }, {
+    id: "aitools",
+    label: "أدوات الذكاء الاصطناعي",
+    icon: Bot
+  }, {
+    id: "equipment",
+    label: "المعدات",
+    icon: Camera
+  }]
+}, {
+  group: "النمو",
+  items: [{
+    id: "learning",
+    label: "التعلم",
+    icon: GraduationCap
+  }, {
+    id: "deen",
+    label: "القرآن والدين",
+    icon: BookOpen
+  }, {
+    id: "health",
+    label: "الصحة",
+    icon: HeartPulse
+  }]
+}, {
+  group: "الحياة",
+  items: [{
+    id: "family",
+    label: "الأسرة",
+    icon: Users2
+  }, {
+    id: "finance",
+    label: "المال",
+    icon: Wallet
+  }]
+}, {
+  group: "التأمل",
+  items: [{
+    id: "reviews",
+    label: "المراجعات",
+    icon: ClipboardList
+  }]
+}, {
+  group: "النظام",
+  items: [{
+    id: "settings",
+    label: "النسخ الاحتياطي",
+    icon: DownloadCloud
+  }]
+}];
+
+/* ---------------- عناصر واجهة عامة ---------------- */
+function Card(_ref4) {
+  var t = _ref4.t,
+    children = _ref4.children,
+    _ref4$className = _ref4.className,
+    className = _ref4$className === void 0 ? "" : _ref4$className,
+    _ref4$style = _ref4.style,
+    style = _ref4$style === void 0 ? {} : _ref4$style;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "rounded-2xl border ".concat(className),
+    style: _objectSpread({
+      background: t.surface,
+      borderColor: t.border
+    }, style)
+  }, children);
+}
+function SectionTitle(_ref5) {
+  var t = _ref5.t,
+    title = _ref5.title,
+    subtitle = _ref5.subtitle,
+    Icon = _ref5.icon;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 mb-6"
+  }, Icon && /*#__PURE__*/React.createElement("div", {
+    className: "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+    style: {
+      background: t.accentSoft,
+      color: t.accent
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    size: 22
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
+    className: "text-2xl font-extrabold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, title), subtitle && /*#__PURE__*/React.createElement("p", {
+    className: "text-sm mt-0.5",
+    style: {
+      color: t.inkSoft
+    }
+  }, subtitle)));
+}
+function ProgressBar(_ref6) {
+  var t = _ref6.t,
+    percent = _ref6.percent,
+    color = _ref6.color;
+  var p = Math.max(0, Math.min(100, percent || 0));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "w-full h-2 rounded-full overflow-hidden",
+    style: {
+      background: t.surfaceAlt
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "h-full rounded-full transition-all duration-500",
+    style: {
+      width: "".concat(p, "%"),
+      background: color || t.accent
+    }
+  }));
+}
+function IconBtn(_ref7) {
+  var t = _ref7.t,
+    onClick = _ref7.onClick,
+    children = _ref7.children,
+    title = _ref7.title,
+    danger = _ref7.danger;
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    title: title,
+    className: "w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0",
+    style: {
+      color: danger ? t.danger : t.inkSoft,
+      background: "transparent"
+    },
+    onMouseEnter: function onMouseEnter(e) {
+      return e.currentTarget.style.background = danger ? t.dangerSoft : t.surfaceAlt;
+    },
+    onMouseLeave: function onMouseLeave(e) {
+      return e.currentTarget.style.background = "transparent";
+    }
+  }, children);
+}
+function TextInput(_ref8) {
+  var t = _ref8.t,
+    props = _objectWithoutProperties(_ref8, _excluded);
+  return /*#__PURE__*/React.createElement("input", _objectSpread(_objectSpread({}, props), {}, {
+    className: "w-full px-3 py-2 rounded-lg text-sm outline-none border transition-colors",
+    style: {
+      background: t.bg,
+      borderColor: t.border,
+      color: t.ink
+    }
+  }));
+}
+function TextArea(_ref9) {
+  var t = _ref9.t,
+    props = _objectWithoutProperties(_ref9, _excluded2);
+  return /*#__PURE__*/React.createElement("textarea", _objectSpread(_objectSpread({}, props), {}, {
+    className: "w-full px-3 py-2 rounded-lg text-sm outline-none border transition-colors resize-none",
+    style: {
+      background: t.bg,
+      borderColor: t.border,
+      color: t.ink
+    }
+  }));
+}
+function Select(_ref0) {
+  var t = _ref0.t,
+    children = _ref0.children,
+    props = _objectWithoutProperties(_ref0, _excluded3);
+  return /*#__PURE__*/React.createElement("select", _objectSpread(_objectSpread({}, props), {}, {
+    className: "w-full px-3 py-2 rounded-lg text-sm outline-none border",
+    style: {
+      background: t.bg,
+      borderColor: t.border,
+      color: t.ink
+    }
+  }), children);
+}
+function PrimaryBtn(_ref1) {
+  var t = _ref1.t,
+    onClick = _ref1.onClick,
+    children = _ref1.children,
+    Icon = _ref1.icon;
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    className: "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-transform active:scale-95",
+    style: {
+      background: t.accent,
+      color: "#fff",
+      fontFamily: "Cairo"
+    }
+  }, Icon && /*#__PURE__*/React.createElement(Icon, {
+    size: 16
+  }), children);
+}
+
+/* ---------------- مؤشر الحياة (العنصر المميز) ---------------- */
+function LifeStar(_ref10) {
+  var t = _ref10.t,
+    domains = _ref10.domains;
+  var n = domains.length;
+  var size = 240;
+  var cx = size / 2;
+  var cy = size / 2;
+  var rMax = 92;
+  var angle = function angle(i) {
+    return Math.PI * 2 * i / n - Math.PI / 2;
+  };
+  var points = domains.map(function (d, i) {
+    var r = d.percent / 100 * rMax;
+    var a = angle(i);
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
+  var outline = domains.map(function (d, i) {
+    var a = angle(i);
+    return [cx + rMax * Math.cos(a), cy + rMax * Math.sin(a)];
+  });
+  var poly = function poly(pts) {
+    return pts.map(function (p) {
+      return p.join(",");
+    }).join(" ");
+  };
+  return /*#__PURE__*/React.createElement("svg", {
+    width: size,
+    height: size,
+    viewBox: "0 0 ".concat(size, " ").concat(size)
+  }, [0.33, 0.66, 1].map(function (f, idx) {
+    return /*#__PURE__*/React.createElement("polygon", {
+      key: idx,
+      points: poly(outline.map(function (_ref11) {
+        var _ref12 = _slicedToArray(_ref11, 2),
+          x = _ref12[0],
+          y = _ref12[1];
+        return [cx + (x - cx) * f, cy + (y - cy) * f];
+      })),
+      fill: "none",
+      stroke: t.border,
+      strokeWidth: "1"
+    });
+  }), outline.map(function (_ref13, i) {
+    var _ref14 = _slicedToArray(_ref13, 2),
+      x = _ref14[0],
+      y = _ref14[1];
+    return /*#__PURE__*/React.createElement("line", {
+      key: i,
+      x1: cx,
+      y1: cy,
+      x2: x,
+      y2: y,
+      stroke: t.border,
+      strokeWidth: "1"
+    });
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: poly(points),
+    fill: t.accent,
+    fillOpacity: "0.28",
+    stroke: t.accent,
+    strokeWidth: "2"
+  }), points.map(function (_ref15, i) {
+    var _ref16 = _slicedToArray(_ref15, 2),
+      x = _ref16[0],
+      y = _ref16[1];
+    return /*#__PURE__*/React.createElement("circle", {
+      key: i,
+      cx: x,
+      cy: y,
+      r: "4",
+      fill: domains[i].color || t.accent
+    });
+  }), outline.map(function (_ref17, i) {
+    var _ref18 = _slicedToArray(_ref17, 2),
+      x = _ref18[0],
+      y = _ref18[1];
+    var a = angle(i);
+    var lx = cx + (rMax + 26) * Math.cos(a);
+    var ly = cy + (rMax + 26) * Math.sin(a);
+    return /*#__PURE__*/React.createElement("text", {
+      key: i,
+      x: lx,
+      y: ly,
+      fill: t.inkSoft,
+      fontSize: "11",
+      fontFamily: "Tajawal",
+      textAnchor: "middle",
+      dominantBaseline: "middle"
+    }, domains[i].label);
+  }));
+}
+
+/* ---------------- قائمة سجلات عامة (CRUD مبسط + بحث) ---------------- */
+function RecordList(_ref19) {
+  var t = _ref19.t,
+    title = _ref19.title,
+    Icon = _ref19.icon,
+    fields = _ref19.fields,
+    items = _ref19.items,
+    onAdd = _ref19.onAdd,
+    onDelete = _ref19.onDelete,
+    renderExtra = _ref19.renderExtra,
+    emptyHint = _ref19.emptyHint,
+    _ref19$searchable = _ref19.searchable,
+    searchable = _ref19$searchable === void 0 ? true : _ref19$searchable;
+  var _useState7 = useState(false),
+    _useState8 = _slicedToArray(_useState7, 2),
+    open = _useState8[0],
+    setOpen = _useState8[1];
+  var _useState9 = useState({}),
+    _useState0 = _slicedToArray(_useState9, 2),
+    draft = _useState0[0],
+    setDraft = _useState0[1];
+  var _useState1 = useState(""),
+    _useState10 = _slicedToArray(_useState1, 2),
+    query = _useState10[0],
+    setQuery = _useState10[1];
+  var submit = function submit() {
+    var hasAny = fields.some(function (f) {
+      return (draft[f.key] || "").toString().trim();
+    });
+    if (!hasAny) return;
+    onAdd(_objectSpread({
+      id: uid()
+    }, draft));
+    setDraft({});
+    setOpen(false);
+  };
+  var filtered = useMemo(function () {
+    if (!query.trim()) return items;
+    var q = query.trim().toLowerCase();
+    return items.filter(function (it) {
+      return fields.some(function (f) {
+        return (it[f.key] || "").toString().toLowerCase().includes(q);
+      });
+    });
+  }, [items, query, fields]);
+  return /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-4 gap-2 flex-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, Icon && /*#__PURE__*/React.createElement(Icon, {
+    size: 18,
+    style: {
+      color: t.accent
+    }
+  }), title && /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, title), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs px-2 py-0.5 rounded-full",
+    style: {
+      background: t.surfaceAlt,
+      color: t.inkSoft
+    }
+  }, items.length)), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, searchable && items.length > 3 && /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement(Search, {
+    size: 13,
+    style: {
+      position: "absolute",
+      right: 8,
+      top: 9,
+      color: t.inkSoft
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    value: query,
+    onChange: function onChange(e) {
+      return setQuery(e.target.value);
+    },
+    placeholder: "\u0628\u062D\u062B...",
+    className: "text-xs pr-6 pl-2 py-1.5 rounded-lg border outline-none",
+    style: {
+      background: t.bg,
+      borderColor: t.border,
+      color: t.ink,
+      width: 110
+    }
+  })), /*#__PURE__*/React.createElement(IconBtn, {
+    t: t,
+    onClick: function onClick() {
+      return setOpen(function (v) {
+        return !v;
+      });
+    },
+    title: "\u0625\u0636\u0627\u0641\u0629"
+  }, open ? /*#__PURE__*/React.createElement(X, {
+    size: 16
+  }) : /*#__PURE__*/React.createElement(Plus, {
+    size: 16
+  })))), open && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 p-3 rounded-xl grid gap-2",
+    style: {
+      background: t.surfaceAlt
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid gap-2",
+    style: {
+      gridTemplateColumns: "repeat(".concat(Math.min(2, fields.length), ", 1fr)")
+    }
+  }, fields.map(function (f) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: f.key
+    }, /*#__PURE__*/React.createElement("label", {
+      className: "text-xs block mb-1",
+      style: {
+        color: t.inkSoft
+      }
+    }, f.label), f.type === "select" ? /*#__PURE__*/React.createElement(Select, {
+      t: t,
+      value: draft[f.key] || "",
+      onChange: function onChange(e) {
+        return setDraft(_objectSpread(_objectSpread({}, draft), {}, _defineProperty({}, f.key, e.target.value)));
+      }
+    }, /*#__PURE__*/React.createElement("option", {
+      value: ""
+    }, "\u2014"), f.options.map(function (o) {
+      return /*#__PURE__*/React.createElement("option", {
+        key: o,
+        value: o
+      }, o);
+    })) : /*#__PURE__*/React.createElement(TextInput, {
+      t: t,
+      type: f.type || "text",
+      value: draft[f.key] || "",
+      onChange: function onChange(e) {
+        return setDraft(_objectSpread(_objectSpread({}, draft), {}, _defineProperty({}, f.key, e.target.value)));
+      },
+      placeholder: f.placeholder || ""
+    }));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end"
+  }, /*#__PURE__*/React.createElement(PrimaryBtn, {
+    t: t,
+    onClick: submit,
+    icon: Check
+  }, "\u062D\u0641\u0638"))), items.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "text-sm py-4 text-center",
+    style: {
+      color: t.inkSoft
+    }
+  }, emptyHint || "لا توجد عناصر بعد") : filtered.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "text-sm py-4 text-center",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0644\u0627 \u0646\u062A\u0627\u0626\u062C \u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0628\u062D\u062B\u0643.") : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, filtered.map(function (it) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: it.id,
+      className: "flex items-center justify-between gap-3 p-3 rounded-xl border",
+      style: {
+        borderColor: t.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "min-w-0 flex-1"
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "font-bold text-sm truncate",
+      style: {
+        color: t.ink,
+        fontFamily: "Cairo"
+      }
+    }, it[fields[0].key] || "—"), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap gap-x-3 gap-y-0.5 mt-1"
+    }, fields.slice(1).map(function (f) {
+      return it[f.key] && /*#__PURE__*/React.createElement("span", {
+        key: f.key,
+        className: "text-xs",
+        style: {
+          color: t.inkSoft
+        }
+      }, f.label, ": ", it[f.key]);
+    })), renderExtra && renderExtra(it)), /*#__PURE__*/React.createElement(IconBtn, {
+      t: t,
+      danger: true,
+      onClick: function onClick() {
+        return onDelete(it.id);
+      },
+      title: "\u062D\u0630\u0641"
+    }, /*#__PURE__*/React.createElement(Trash2, {
+      size: 15
+    })));
+  })));
+}
+
+/* ---------------- لوحة التحكم ---------------- */
+function Dashboard(_ref20) {
+  var t = _ref20.t,
+    db = _ref20.db,
+    update = _ref20.update,
+    setActiveSection = _ref20.setActiveSection;
+  var today = todayISO();
+  var tasksToday = db.tasks.filter(function (x) {
+    return x.date === today;
+  });
+  var doneToday = tasksToday.filter(function (x) {
+    return x.status === "مكتملة";
+  });
+  var weekS = startOfWeek(new Date());
+  var weekE = endOfWeek(new Date());
+  var tasksWeek = db.tasks.filter(function (x) {
+    return x.date && new Date(x.date) >= weekS && new Date(x.date) <= weekE;
+  });
+  var doneWeek = tasksWeek.filter(function (x) {
+    return x.status === "مكتملة";
+  });
+  var monthStr = today.slice(0, 7);
+  var tasksMonth = db.tasks.filter(function (x) {
+    return x.date && x.date.startsWith(monthStr);
+  });
+  var doneMonth = tasksMonth.filter(function (x) {
+    return x.status === "مكتملة";
+  });
+  var pct = function pct(a, b) {
+    return b === 0 ? 0 : Math.round(a / b * 100);
+  };
+  var income = db.finance.income.reduce(function (s, i) {
+    return s + (Number(i.amount) || 0);
+  }, 0);
+  var expenses = db.finance.expenses.reduce(function (s, i) {
+    return s + (Number(i.amount) || 0);
+  }, 0);
+  var priorities = db.tasks.filter(function (x) {
+    return x.status !== "مكتملة" && x.priority === "عالية";
+  }).slice(0, 3);
+  var learningHours = db.learningLog.reduce(function (s, l) {
+    return s + (Number(l.hours) || 0);
+  }, 0);
+  var familySessions = db.family.sessions.length;
+  var hifzPct = Number(db.deen.hifz.percent) || 0;
+  var activeProjects = db.projects.filter(function (p) {
+    return Number(p.progress || 0) < 100;
+  });
+  var domains = [{
+    label: "المهام",
+    percent: pct(doneWeek.length, tasksWeek.length || 1),
+    color: t.accent
+  }, {
+    label: "الدين",
+    percent: hifzPct,
+    color: t.gold
+  }, {
+    label: "الصحة",
+    percent: Math.min(100, (Number(db.health.water[today]) || 0) * 12.5),
+    color: "#4C8C6B"
+  }, {
+    label: "التعلم",
+    percent: Math.min(100, learningHours * 5),
+    color: t.night
+  }, {
+    label: "المال",
+    percent: db.finance.apartmentGoal.target ? Math.min(100, pct(db.finance.apartmentGoal.current, db.finance.apartmentGoal.target)) : 0,
+    color: "#8A6BAE"
+  }, {
+    label: "الأسرة",
+    percent: Math.min(100, familySessions * 20),
+    color: "#C1667E"
+  }];
+  var StatTile = function StatTile(_ref21) {
+    var label = _ref21.label,
+      value = _ref21.value,
+      Icon = _ref21.icon,
+      color = _ref21.color,
+      onClick = _ref21.onClick;
+    return /*#__PURE__*/React.createElement(Card, {
+      t: t,
+      className: "p-4 cursor-pointer hover:shadow-sm transition-shadow"
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: onClick,
+      className: "flex items-center justify-between"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+      className: "text-xs mb-1",
+      style: {
+        color: t.inkSoft
+      }
+    }, label), /*#__PURE__*/React.createElement("p", {
+      className: "text-xl font-extrabold",
+      style: {
+        color: t.ink,
+        fontFamily: "Cairo"
+      }
+    }, value)), /*#__PURE__*/React.createElement("div", {
+      className: "w-9 h-9 rounded-lg flex items-center justify-center",
+      style: {
+        background: (color || t.accent) + "22",
+        color: color || t.accent
+      }
+    }, /*#__PURE__*/React.createElement(Icon, {
+      size: 18
+    }))));
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645",
+    subtitle: "\u0623\u0647\u0644\u064B\u0627 \u0628\u0643 \u2014 ".concat(new Date().toLocaleDateString("ar-EG", {
+      weekday: "long",
+      day: "numeric",
+      month: "long"
+    })),
+    icon: LayoutDashboard
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"
+  }, /*#__PURE__*/React.createElement(StatTile, {
+    label: "\u0645\u0647\u0627\u0645 \u0627\u0644\u064A\u0648\u0645",
+    value: "".concat(doneToday.length, "/").concat(tasksToday.length),
+    icon: CheckSquare,
+    onClick: function onClick() {
+      return setActiveSection("tasks");
+    }
+  }), /*#__PURE__*/React.createElement(StatTile, {
+    label: "\u0625\u0646\u062C\u0627\u0632 \u0627\u0644\u0623\u0633\u0628\u0648\u0639",
+    value: "".concat(pct(doneWeek.length, tasksWeek.length), "%"),
+    icon: TrendingUp,
+    color: t.night
+  }), /*#__PURE__*/React.createElement(StatTile, {
+    label: "\u0625\u0646\u062C\u0627\u0632 \u0627\u0644\u0634\u0647\u0631",
+    value: "".concat(pct(doneMonth.length, tasksMonth.length), "%"),
+    icon: TrendingUp,
+    color: t.gold
+  }), /*#__PURE__*/React.createElement(StatTile, {
+    label: "\u0627\u0644\u0645\u0634\u0627\u0631\u064A\u0639 \u0627\u0644\u062D\u0627\u0644\u064A\u0629",
+    value: activeProjects.length,
+    icon: FolderKanban,
+    onClick: function onClick() {
+      return setActiveSection("projects");
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 lg:grid-cols-3 gap-4"
+  }, /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 lg:col-span-2"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-3",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0623\u0647\u0645 3 \u0623\u0648\u0644\u0648\u064A\u0627\u062A"), priorities.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "text-sm",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u0648\u0644\u0648\u064A\u0627\u062A \u0639\u0627\u0644\u064A\u0629 \u063A\u064A\u0631 \u0645\u0646\u062C\u0632\u0629 \u2014 \u0623\u0636\u0641 \u0645\u0647\u0627\u0645\u064B\u0627 \u0645\u0646 \u0642\u0633\u0645 \"\u0627\u0644\u0645\u0647\u0627\u0645\".") : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, priorities.map(function (p) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.id,
+      className: "flex items-center gap-3 p-3 rounded-xl border",
+      style: {
+        borderColor: t.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "w-2 h-2 rounded-full",
+      style: {
+        background: t.danger
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1"
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "text-sm font-bold",
+      style: {
+        color: t.ink
+      }
+    }, p.title), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs",
+      style: {
+        color: t.inkSoft
+      }
+    }, fmtDate(p.date))));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 md:grid-cols-3 gap-3 mt-5"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u062F\u062E\u0644 \u0627\u0644\u0634\u0647\u0631\u064A"), /*#__PURE__*/React.createElement("p", {
+    className: "font-extrabold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, fmtMoney(income))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0627\u062F\u062E\u0627\u0631"), /*#__PURE__*/React.createElement("p", {
+    className: "font-extrabold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, fmtMoney(db.finance.apartmentGoal.current))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0633\u0627\u0639\u0627\u062A \u0627\u0644\u062A\u0639\u0644\u0645"), /*#__PURE__*/React.createElement("p", {
+    className: "font-extrabold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, learningHours))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between mb-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u062A\u0642\u062F\u0645 \u0634\u0631\u0627\u0621 \u0627\u0644\u0634\u0642\u0629"), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-bold",
+    style: {
+      color: t.ink
+    }
+  }, pct(db.finance.apartmentGoal.current, db.finance.apartmentGoal.target), "%")), /*#__PURE__*/React.createElement(ProgressBar, {
+    t: t,
+    percent: pct(db.finance.apartmentGoal.current, db.finance.apartmentGoal.target),
+    color: t.night
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mt-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between mb-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u062A\u0642\u062F\u0645 \u062D\u0641\u0638 \u0627\u0644\u0642\u0631\u0622\u0646"), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-bold",
+    style: {
+      color: t.ink
+    }
+  }, hifzPct, "%")), /*#__PURE__*/React.createElement(ProgressBar, {
+    t: t,
+    percent: hifzPct,
+    color: t.gold
+  }))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 flex flex-col items-center justify-center"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-2 self-start",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0645\u0624\u0634\u0631 \u0627\u0644\u062D\u064A\u0627\u0629 \u0627\u0644\u0639\u0627\u0645"), /*#__PURE__*/React.createElement(LifeStar, {
+    t: t,
+    domains: domains
+  }))));
+}
+
+/* ---------------- المهام ---------------- */
+var PRIORITIES = ["عالية", "متوسطة", "منخفضة"];
+var STATUSES = ["لم تبدأ", "قيد التنفيذ", "مكتملة"];
+var PRIORITY_COLOR = function PRIORITY_COLOR(t, p) {
+  return p === "عالية" ? t.danger : p === "متوسطة" ? t.gold : t.inkSoft;
+};
+function TasksView(_ref22) {
+  var t = _ref22.t,
+    db = _ref22.db,
+    update = _ref22.update;
+  var _useState11 = useState("اليوم"),
+    _useState12 = _slicedToArray(_useState11, 2),
+    view = _useState12[0],
+    setView = _useState12[1];
+  var _useState13 = useState(false),
+    _useState14 = _slicedToArray(_useState13, 2),
+    open = _useState14[0],
+    setOpen = _useState14[1];
+  var _useState15 = useState({
+      priority: "متوسطة",
+      status: "لم تبدأ",
+      date: todayISO()
+    }),
+    _useState16 = _slicedToArray(_useState15, 2),
+    draft = _useState16[0],
+    setDraft = _useState16[1];
+  var _useState17 = useState(""),
+    _useState18 = _slicedToArray(_useState17, 2),
+    query = _useState18[0],
+    setQuery = _useState18[1];
+  var addTask = function addTask() {
+    if (!(draft.title || "").trim()) return;
+    update(function (prev) {
+      return _objectSpread(_objectSpread({}, prev), {}, {
+        tasks: [_objectSpread({
+          id: uid()
+        }, draft)].concat(_toConsumableArray(prev.tasks))
+      });
+    });
+    setDraft({
+      priority: "متوسطة",
+      status: "لم تبدأ",
+      date: todayISO()
+    });
+    setOpen(false);
+  };
+  var setStatus = function setStatus(id, status) {
+    return update(function (prev) {
+      return _objectSpread(_objectSpread({}, prev), {}, {
+        tasks: prev.tasks.map(function (x) {
+          return x.id === id ? _objectSpread(_objectSpread({}, x), {}, {
+            status: status
+          }) : x;
+        })
+      });
+    });
+  };
+  var removeTask = function removeTask(id) {
+    return update(function (prev) {
+      return _objectSpread(_objectSpread({}, prev), {}, {
+        tasks: prev.tasks.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  var today = todayISO();
+  var weekS = startOfWeek(new Date());
+  var weekE = endOfWeek(new Date());
+  var monthStr = today.slice(0, 7);
+  var filtered = useMemo(function () {
+    var list = db.tasks.filter(function (x) {
+      if (view === "اليوم") return x.date === today;
+      if (view === "الأسبوع") return x.date && new Date(x.date) >= weekS && new Date(x.date) <= weekE;
+      if (view === "الشهر") return x.date && x.date.startsWith(monthStr);
+      if (view === "المتأخرة") return x.date && x.date < today && x.status !== "مكتملة";
+      if (view === "المكتملة") return x.status === "مكتملة";
+      return true;
+    });
+    if (query.trim()) {
+      var q = query.trim().toLowerCase();
+      list = list.filter(function (x) {
+        return (x.title || "").toLowerCase().includes(q) || (x.domain || "").toLowerCase().includes(q) || (x.project || "").toLowerCase().includes(q);
+      });
+    }
+    return list;
+  }, [db.tasks, view, query]);
+  var tabs = ["اليوم", "الأسبوع", "الشهر", "المتأخرة", "المكتملة"];
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0645\u0647\u0627\u0645",
+    subtitle: "\u0625\u062F\u0627\u0631\u0629 \u0645\u0647\u0627\u0645\u0643 \u0627\u0644\u064A\u0648\u0645\u064A\u0629 \u0628\u0623\u0648\u0644\u0648\u064A\u0629 \u0648\u0648\u0636\u0648\u062D",
+    icon: CheckSquare
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-4 flex-wrap gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-1 p-1 rounded-xl",
+    style: {
+      background: t.surfaceAlt
+    }
+  }, tabs.map(function (tab) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: tab,
+      onClick: function onClick() {
+        return setView(tab);
+      },
+      className: "px-3 py-1.5 rounded-lg text-sm font-bold transition-colors",
+      style: {
+        background: view === tab ? t.surface : "transparent",
+        color: view === tab ? t.accent : t.inkSoft,
+        fontFamily: "Cairo"
+      }
+    }, tab);
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement(Search, {
+    size: 13,
+    style: {
+      position: "absolute",
+      right: 10,
+      top: 11,
+      color: t.inkSoft
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    value: query,
+    onChange: function onChange(e) {
+      return setQuery(e.target.value);
+    },
+    placeholder: "\u0627\u0628\u062D\u062B \u0641\u064A \u0627\u0644\u0645\u0647\u0627\u0645...",
+    className: "text-sm pr-7 pl-3 py-2 rounded-lg border outline-none",
+    style: {
+      background: t.bg,
+      borderColor: t.border,
+      color: t.ink,
+      width: 160
+    }
+  })), /*#__PURE__*/React.createElement(PrimaryBtn, {
+    t: t,
+    icon: open ? X : Plus,
+    onClick: function onClick() {
+      return setOpen(function (v) {
+        return !v;
+      });
+    }
+  }, "\u0645\u0647\u0645\u0629 \u062C\u062F\u064A\u062F\u0629"))), open && /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-4 mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-3 gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md:col-span-2"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0633\u0645 \u0627\u0644\u0645\u0647\u0645\u0629"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: draft.title || "",
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        title: e.target.value
+      }));
+    },
+    placeholder: "\u0645\u062B\u0627\u0644: \u062A\u062C\u0647\u064A\u0632 \u0639\u0631\u0636 \u0627\u0644\u0633\u0639\u0631 \u0644\u0639\u0645\u064A\u0644 \u062C\u062F\u064A\u062F"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u062A\u0627\u0631\u064A\u062E"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    type: "date",
+    value: draft.date || "",
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        date: e.target.value
+      }));
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0623\u0648\u0644\u0648\u064A\u0629"), /*#__PURE__*/React.createElement(Select, {
+    t: t,
+    value: draft.priority,
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        priority: e.target.value
+      }));
+    }
+  }, PRIORITIES.map(function (p) {
+    return /*#__PURE__*/React.createElement("option", {
+      key: p,
+      value: p
+    }, p);
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0645\u062C\u0627\u0644"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: draft.domain || "",
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        domain: e.target.value
+      }));
+    },
+    placeholder: "\u0645\u062B\u0627\u0644: \u0627\u0644\u0645\u064A\u062F\u064A\u0627\u060C \u0634\u062E\u0635\u064A"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0645\u0634\u0631\u0648\u0639"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: draft.project || "",
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        project: e.target.value
+      }));
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0648\u0642\u062A \u0627\u0644\u0645\u062A\u0648\u0642\u0639 (\u062F\u0642\u064A\u0642\u0629)"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    type: "number",
+    value: draft.estTime || "",
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        estTime: e.target.value
+      }));
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0648\u0642\u062A \u0627\u0644\u0641\u0639\u0644\u064A (\u062F\u0642\u064A\u0642\u0629)"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    type: "number",
+    value: draft.actualTime || "",
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        actualTime: e.target.value
+      }));
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md:col-span-3"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0648\u0635\u0641 / \u0645\u0644\u0627\u062D\u0638\u0627\u062A"), /*#__PURE__*/React.createElement(TextArea, {
+    t: t,
+    rows: 2,
+    value: draft.desc || "",
+    onChange: function onChange(e) {
+      return setDraft(_objectSpread(_objectSpread({}, draft), {}, {
+        desc: e.target.value
+      }));
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end mt-3"
+  }, /*#__PURE__*/React.createElement(PrimaryBtn, {
+    t: t,
+    onClick: addTask,
+    icon: Check
+  }, "\u062D\u0641\u0638 \u0627\u0644\u0645\u0647\u0645\u0629"))), filtered.length === 0 ? /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-8 text-center"
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0644\u0627 \u062A\u0648\u062C\u062F \u0645\u0647\u0627\u0645 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0639\u0631\u0636.")) : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, filtered.map(function (task) {
+    return /*#__PURE__*/React.createElement(Card, {
+      key: task.id,
+      t: t,
+      className: "p-4"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-start gap-3"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return setStatus(task.id, task.status === "مكتملة" ? "لم تبدأ" : "مكتملة");
+      },
+      className: "mt-0.5 shrink-0",
+      style: {
+        color: task.status === "مكتملة" ? t.accent : t.inkSoft
+      }
+    }, task.status === "مكتملة" ? /*#__PURE__*/React.createElement(CheckCircle2, {
+      size: 20
+    }) : /*#__PURE__*/React.createElement(Circle, {
+      size: 20
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-2 flex-wrap"
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "font-bold text-sm",
+      style: {
+        color: t.ink,
+        textDecoration: task.status === "مكتملة" ? "line-through" : "none",
+        fontFamily: "Cairo"
+      }
+    }, task.title), /*#__PURE__*/React.createElement("span", {
+      className: "text-xs px-2 py-0.5 rounded-full font-bold",
+      style: {
+        color: PRIORITY_COLOR(t, task.priority),
+        background: t.surfaceAlt
+      }
+    }, task.priority), task.date && task.date < today && task.status !== "مكتملة" && /*#__PURE__*/React.createElement("span", {
+      className: "text-xs px-2 py-0.5 rounded-full flex items-center gap-1",
+      style: {
+        color: t.danger,
+        background: t.dangerSoft
+      }
+    }, /*#__PURE__*/React.createElement(AlertTriangle, {
+      size: 11
+    }), " \u0645\u062A\u0623\u062E\u0631\u0629")), task.desc && /*#__PURE__*/React.createElement("p", {
+      className: "text-xs mt-1",
+      style: {
+        color: t.inkSoft
+      }
+    }, task.desc), /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5"
+    }, task.date && /*#__PURE__*/React.createElement("span", {
+      className: "text-xs",
+      style: {
+        color: t.inkSoft
+      }
+    }, "\uD83D\uDCC5 ", fmtDate(task.date)), task.domain && /*#__PURE__*/React.createElement("span", {
+      className: "text-xs",
+      style: {
+        color: t.inkSoft
+      }
+    }, "\uD83C\uDFF7 ", task.domain), task.project && /*#__PURE__*/React.createElement("span", {
+      className: "text-xs",
+      style: {
+        color: t.inkSoft
+      }
+    }, "\uD83D\uDCC1 ", task.project), task.estTime && /*#__PURE__*/React.createElement("span", {
+      className: "text-xs",
+      style: {
+        color: t.inkSoft
+      }
+    }, "\u23F1 ", task.estTime, " \u062F"))), /*#__PURE__*/React.createElement(Select, {
+      t: t,
+      value: task.status,
+      onChange: function onChange(e) {
+        return setStatus(task.id, e.target.value);
+      },
+      style: {
+        width: "auto"
+      }
+    }, STATUSES.map(function (s) {
+      return /*#__PURE__*/React.createElement("option", {
+        key: s,
+        value: s
+      }, s);
+    })), /*#__PURE__*/React.createElement(IconBtn, {
+      t: t,
+      danger: true,
+      onClick: function onClick() {
+        return removeTask(task.id);
+      }
+    }, /*#__PURE__*/React.createElement(Trash2, {
+      size: 15
+    }))));
+  })));
+}
+
+/* ---------------- المشاريع ---------------- */
+function ProjectsView(_ref23) {
+  var t = _ref23.t,
+    db = _ref23.db,
+    update = _ref23.update;
+  var add = function add(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        projects: [item].concat(_toConsumableArray(p.projects))
+      });
+    });
+  };
+  var del = function del(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        projects: p.projects.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  var setProgress = function setProgress(id, progress) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        projects: p.projects.map(function (x) {
+          return x.id === id ? _objectSpread(_objectSpread({}, x), {}, {
+            progress: progress
+          }) : x;
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0645\u0634\u0627\u0631\u064A\u0639",
+    subtitle: "\u062A\u062A\u0628\u0651\u0639 \u0643\u0644 \u0645\u0634\u0631\u0648\u0639 \u0645\u0646 \u0627\u0644\u0628\u062F\u0627\u064A\u0629 \u062D\u062A\u0649 \u0627\u0644\u062A\u0633\u0644\u064A\u0645",
+    icon: FolderKanban
+  }), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0634\u0627\u0631\u064A\u0639",
+    icon: FolderKanban,
+    items: db.projects,
+    onAdd: add,
+    onDelete: del,
+    fields: [{
+      key: "name",
+      label: "اسم المشروع"
+    }, {
+      key: "client",
+      label: "العميل"
+    }, {
+      key: "deadline",
+      label: "الموعد النهائي",
+      type: "date"
+    }, {
+      key: "value",
+      label: "القيمة"
+    }, {
+      key: "stage",
+      label: "المرحلة",
+      type: "select",
+      options: ["تخطيط", "تنفيذ", "مراجعة", "تسليم"]
+    }, {
+      key: "notes",
+      label: "ملاحظات"
+    }],
+    renderExtra: function renderExtra(it) {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "mt-2 max-w-xs"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "flex items-center gap-2"
+      }, /*#__PURE__*/React.createElement(ProgressBar, {
+        t: t,
+        percent: Number(it.progress) || 0
+      }), /*#__PURE__*/React.createElement("input", {
+        type: "number",
+        min: "0",
+        max: "100",
+        value: it.progress || 0,
+        onChange: function onChange(e) {
+          return setProgress(it.id, e.target.value);
+        },
+        className: "w-14 text-xs px-1 py-0.5 rounded border outline-none",
+        style: {
+          borderColor: t.border,
+          background: t.bg,
+          color: t.ink
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        className: "text-xs",
+        style: {
+          color: t.inkSoft
+        }
+      }, "%")));
+    }
+  }));
+}
+
+/* ---------------- العملاء ---------------- */
+function ClientsView(_ref24) {
+  var t = _ref24.t,
+    db = _ref24.db,
+    update = _ref24.update;
+  var add = function add(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        clients: [item].concat(_toConsumableArray(p.clients))
+      });
+    });
+  };
+  var del = function del(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        clients: p.clients.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0639\u0645\u0644\u0627\u0621",
+    subtitle: "\u0633\u062C\u0644 \u0643\u0627\u0645\u0644 \u0628\u0639\u0645\u0644\u0627\u0626\u0643 \u0648\u0645\u0634\u0627\u0631\u064A\u0639\u0647\u0645",
+    icon: Users
+  }), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621",
+    icon: Users,
+    items: db.clients,
+    onAdd: add,
+    onDelete: del,
+    fields: [{
+      key: "name",
+      label: "اسم العميل"
+    }, {
+      key: "phone",
+      label: "رقم الهاتف"
+    }, {
+      key: "email",
+      label: "البريد"
+    }, {
+      key: "company",
+      label: "الشركة"
+    }, {
+      key: "lastContact",
+      label: "آخر تواصل",
+      type: "date"
+    }],
+    renderExtra: function renderExtra(it) {
+      var clientProjects = db.projects.filter(function (p) {
+        return p.client === it.name;
+      });
+      var total = clientProjects.reduce(function (s, p) {
+        return s + (Number(p.value) || 0);
+      }, 0);
+      return /*#__PURE__*/React.createElement("p", {
+        className: "text-xs mt-1",
+        style: {
+          color: t.inkSoft
+        }
+      }, clientProjects.length, " \u0645\u0634\u0631\u0648\u0639 \u2014 \u0625\u062C\u0645\u0627\u0644\u064A ", fmtMoney(total));
+    }
+  }));
+}
+
+/* ---------------- شركة الميديا ---------------- */
+function MediaView(_ref25) {
+  var t = _ref25.t,
+    db = _ref25.db,
+    update = _ref25.update;
+  var kinds = [{
+    key: "خدمة",
+    label: "الخدمات"
+  }, {
+    key: "عقد",
+    label: "العقود"
+  }, {
+    key: "عرض سعر",
+    label: "عروض الأسعار"
+  }, {
+    key: "فاتورة",
+    label: "الفواتير"
+  }];
+  var add = function add(kind) {
+    return function (item) {
+      return update(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          mediaItems: [_objectSpread(_objectSpread({}, item), {}, {
+            kind: kind
+          })].concat(_toConsumableArray(p.mediaItems))
+        });
+      });
+    };
+  };
+  var del = function del(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        mediaItems: p.mediaItems.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0634\u0631\u0643\u0629 \u0627\u0644\u0645\u064A\u062F\u064A\u0627",
+    subtitle: "\u0627\u0644\u062E\u062F\u0645\u0627\u062A\u060C \u0627\u0644\u0639\u0642\u0648\u062F\u060C \u0639\u0631\u0648\u0636 \u0627\u0644\u0623\u0633\u0639\u0627\u0631\u060C \u0648\u0627\u0644\u0641\u0648\u0627\u062A\u064A\u0631",
+    icon: Building2
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-2 gap-4 mb-4"
+  }, kinds.map(function (k) {
+    return /*#__PURE__*/React.createElement(RecordList, {
+      key: k.key,
+      t: t,
+      title: k.label,
+      icon: k.key === "فاتورة" ? Receipt : FileText,
+      items: db.mediaItems.filter(function (x) {
+        return x.kind === k.key;
+      }),
+      onAdd: add(k.key),
+      onDelete: del,
+      fields: [{
+        key: "title",
+        label: "العنوان"
+      }, {
+        key: "client",
+        label: "العميل"
+      }, {
+        key: "amount",
+        label: "المبلغ"
+      }, {
+        key: "status",
+        label: "الحالة",
+        type: "select",
+        options: ["قيد الإعداد", "مُرسل", "مقبول", "مدفوع"]
+      }]
+    });
+  })), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0627\u0644\u0628\u0648\u0631\u062A\u0641\u0648\u0644\u064A\u0648",
+    icon: ImageIcon,
+    items: db.portfolio,
+    onAdd: function onAdd(item) {
+      return update(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          portfolio: [item].concat(_toConsumableArray(p.portfolio))
+        });
+      });
+    },
+    onDelete: function onDelete(id) {
+      return update(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          portfolio: p.portfolio.filter(function (x) {
+            return x.id !== id;
+          })
+        });
+      });
+    },
+    fields: [{
+      key: "title",
+      label: "عنوان العمل"
+    }, {
+      key: "link",
+      label: "الرابط"
+    }, {
+      key: "notes",
+      label: "ملاحظات"
+    }]
+  }));
+}
+
+/* ---------------- صناعة المحتوى ---------------- */
+var CONTENT_STAGES = ["فكرة", "سكريبت", "تصوير", "مونتاج", "مراجعة", "منشور"];
+function ContentView(_ref26) {
+  var t = _ref26.t,
+    db = _ref26.db,
+    update = _ref26.update;
+  var add = function add(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        contentIdeas: [_objectSpread(_objectSpread({}, item), {}, {
+          stage: item.stage || "فكرة"
+        })].concat(_toConsumableArray(p.contentIdeas))
+      });
+    });
+  };
+  var del = function del(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        contentIdeas: p.contentIdeas.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  var setStage = function setStage(id, stage) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        contentIdeas: p.contentIdeas.map(function (x) {
+          return x.id === id ? _objectSpread(_objectSpread({}, x), {}, {
+            stage: stage
+          }) : x;
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0635\u0646\u0627\u0639\u0629 \u0627\u0644\u0645\u062D\u062A\u0648\u0649",
+    subtitle: "\u0645\u0646 \u0628\u0646\u0643 \u0627\u0644\u0623\u0641\u0643\u0627\u0631 \u062D\u062A\u0649 \u0627\u0644\u0646\u0634\u0631 \u0648\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0623\u062F\u0627\u0621",
+    icon: Video
+  }), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-4"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0628\u0646\u0643 \u0627\u0644\u0623\u0641\u0643\u0627\u0631 \u0648\u062A\u0642\u0648\u064A\u0645 \u0627\u0644\u0646\u0634\u0631")), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "",
+    items: db.contentIdeas,
+    onAdd: add,
+    onDelete: del,
+    fields: [{
+      key: "title",
+      label: "فكرة المحتوى"
+    }, {
+      key: "platform",
+      label: "المنصة"
+    }, {
+      key: "publishDate",
+      label: "تاريخ النشر",
+      type: "date"
+    }, {
+      key: "stage",
+      label: "المرحلة",
+      type: "select",
+      options: CONTENT_STAGES
+    }, {
+      key: "notes",
+      label: "ملاحظات"
+    }],
+    renderExtra: function renderExtra(it) {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "flex gap-1 mt-2 flex-wrap"
+      }, CONTENT_STAGES.map(function (s) {
+        return /*#__PURE__*/React.createElement("button", {
+          key: s,
+          onClick: function onClick() {
+            return setStage(it.id, s);
+          },
+          className: "text-[11px] px-2 py-0.5 rounded-full border",
+          style: {
+            borderColor: it.stage === s ? t.accent : t.border,
+            color: it.stage === s ? t.accent : t.inkSoft,
+            background: it.stage === s ? t.accentSoft : "transparent"
+          }
+        }, s);
+      }));
+    }
+  })));
+}
+
+/* ---------------- البراند الشخصي ---------------- */
+function BrandView(_ref27) {
+  var t = _ref27.t,
+    db = _ref27.db,
+    update = _ref27.update;
+  var b = db.brand;
+  var setB = function setB(key, val) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        brand: _objectSpread(_objectSpread({}, p.brand), {}, _defineProperty({}, key, val))
+      });
+    });
+  };
+  var counters = [{
+    key: "videos",
+    label: "عدد الفيديوهات"
+  }, {
+    key: "reels",
+    label: "عدد الريلز"
+  }, {
+    key: "contentClients",
+    label: "عملاء من المحتوى"
+  }, {
+    key: "sponsorships",
+    label: "عدد الرعايات"
+  }, {
+    key: "productReviews",
+    label: "منتجات تمت مراجعتها"
+  }];
+  var addTarget = function addTarget(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        brand: _objectSpread(_objectSpread({}, p.brand), {}, {
+          targets: [item].concat(_toConsumableArray(p.brand.targets))
+        })
+      });
+    });
+  };
+  var delTarget = function delTarget(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        brand: _objectSpread(_objectSpread({}, p.brand), {}, {
+          targets: p.brand.targets.filter(function (x) {
+            return x.id !== id;
+          })
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0628\u0631\u0627\u0646\u062F \u0627\u0644\u0634\u062E\u0635\u064A",
+    subtitle: "\u0646\u0645\u0648 \u062D\u0636\u0648\u0631\u0643 \u0627\u0644\u0634\u062E\u0635\u064A \u0631\u0642\u0645\u064B\u0627 \u0628\u0631\u0642\u0645",
+    icon: Sparkles
+  }), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 md:grid-cols-5 gap-3"
+  }, counters.map(function (c) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: c.key
+    }, /*#__PURE__*/React.createElement("label", {
+      className: "text-xs block mb-1",
+      style: {
+        color: t.inkSoft
+      }
+    }, c.label), /*#__PURE__*/React.createElement(TextInput, {
+      t: t,
+      type: "number",
+      value: b[c.key],
+      onChange: function onChange(e) {
+        return setB(c.key, e.target.value);
+      }
+    }));
+  }))), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0627\u0644\u0634\u0631\u0643\u0627\u062A \u0627\u0644\u0645\u0633\u062A\u0647\u062F\u0641\u0629",
+    icon: Target,
+    items: b.targets,
+    onAdd: addTarget,
+    onDelete: delTarget,
+    fields: [{
+      key: "name",
+      label: "اسم الشركة"
+    }, {
+      key: "notes",
+      label: "ملاحظات"
+    }]
+  }));
+}
+
+/* ---------------- أدوات الذكاء الاصطناعي ---------------- */
+function AIToolsView(_ref28) {
+  var t = _ref28.t,
+    db = _ref28.db,
+    update = _ref28.update;
+  var add = function add(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        aiTools: [item].concat(_toConsumableArray(p.aiTools))
+      });
+    });
+  };
+  var del = function del(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        aiTools: p.aiTools.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0623\u062F\u0648\u0627\u062A \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A",
+    subtitle: "\u0642\u0627\u0639\u062F\u0629 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0627\u0644\u0643\u0627\u0645\u0644\u0629 \u0644\u0643\u0644 \u0623\u062F\u0627\u0629 \u062A\u0633\u062A\u062E\u062F\u0645\u0647\u0627",
+    icon: Bot
+  }), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0627\u0644\u0623\u062F\u0648\u0627\u062A",
+    icon: Bot,
+    items: db.aiTools,
+    onAdd: add,
+    onDelete: del,
+    fields: [{
+      key: "name",
+      label: "الاسم"
+    }, {
+      key: "url",
+      label: "الرابط"
+    }, {
+      key: "category",
+      label: "الفئة"
+    }, {
+      key: "price",
+      label: "السعر"
+    }, {
+      key: "used",
+      label: "هل استخدمتها؟",
+      type: "select",
+      options: ["نعم", "لا"]
+    }, {
+      key: "rating",
+      label: "التقييم (1-5)",
+      type: "number"
+    }, {
+      key: "bestUse",
+      label: "أفضل استخدام"
+    }, {
+      key: "notes",
+      label: "ملاحظات"
+    }],
+    renderExtra: function renderExtra(it) {
+      return it.rating && /*#__PURE__*/React.createElement("div", {
+        className: "flex gap-0.5 mt-1"
+      }, Array.from({
+        length: 5
+      }).map(function (_, i) {
+        return /*#__PURE__*/React.createElement(Star, {
+          key: i,
+          size: 12,
+          fill: i < Number(it.rating) ? t.gold : "none",
+          color: t.gold
+        });
+      }));
+    }
+  }));
+}
+
+/* ---------------- المعدات ---------------- */
+function EquipmentView(_ref29) {
+  var t = _ref29.t,
+    db = _ref29.db,
+    update = _ref29.update;
+  var add = function add(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        equipment: [item].concat(_toConsumableArray(p.equipment))
+      });
+    });
+  };
+  var del = function del(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        equipment: p.equipment.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0645\u0639\u062F\u0627\u062A",
+    subtitle: "\u0643\u0627\u0645\u064A\u0631\u0627\u062A\u060C \u0639\u062F\u0633\u0627\u062A\u060C \u0648\u0643\u0644 \u0645\u0627 \u062A\u0645\u0644\u0643\u0647 \u0645\u0646 \u0623\u062C\u0647\u0632\u0629 \u0627\u0644\u0639\u0645\u0644",
+    icon: Camera
+  }), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0639\u062F\u0627\u062A",
+    icon: Camera,
+    items: db.equipment,
+    onAdd: add,
+    onDelete: del,
+    fields: [{
+      key: "name",
+      label: "اسم القطعة"
+    }, {
+      key: "category",
+      label: "الفئة",
+      type: "select",
+      options: ["كاميرا", "عدسة", "ميكروفون", "إضاءة", "ترايبود", "حقيبة", "كمبيوتر", "هارد"]
+    }, {
+      key: "purchaseDate",
+      label: "تاريخ الشراء",
+      type: "date"
+    }, {
+      key: "warranty",
+      label: "الضمان حتى",
+      type: "date"
+    }],
+    renderExtra: function renderExtra(it) {
+      if (!it.warranty) return null;
+      var isExpired = it.warranty < todayISO();
+      return /*#__PURE__*/React.createElement("span", {
+        className: "text-xs mt-1 inline-block px-2 py-0.5 rounded-full",
+        style: {
+          color: isExpired ? t.danger : t.accent,
+          background: isExpired ? t.dangerSoft : t.accentSoft
+        }
+      }, isExpired ? "الضمان منتهٍ" : "الضمان ساري");
+    }
+  }));
+}
+
+/* ---------------- التعلم ---------------- */
+function LearningView(_ref30) {
+  var t = _ref30.t,
+    db = _ref30.db,
+    update = _ref30.update;
+  var addCat = function addCat(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        learningCategories: [].concat(_toConsumableArray(p.learningCategories), [_objectSpread(_objectSpread({}, item), {}, {
+          hours: 0
+        })])
+      });
+    });
+  };
+  var delCat = function delCat(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        learningCategories: p.learningCategories.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  var totalHours = db.learningLog.reduce(function (s, l) {
+    return s + (Number(l.hours) || 0);
+  }, 0);
+  var addLog = function addLog(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        learningLog: [_objectSpread(_objectSpread({}, item), {}, {
+          date: item.date || todayISO()
+        })].concat(_toConsumableArray(p.learningLog))
+      });
+    });
+  };
+  var delLog = function delLog(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        learningLog: p.learningLog.filter(function (x) {
+          return x.id !== id;
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u062A\u0639\u0644\u0645",
+    subtitle: "\u0645\u062C\u0645\u0648\u0639 \u0633\u0627\u0639\u0627\u062A \u0627\u0644\u062A\u0639\u0644\u0645 \u0627\u0644\u0645\u0633\u062C\u0644\u0629: ".concat(totalHours),
+    icon: GraduationCap
+  }), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-3"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0645\u062C\u0627\u0644\u0627\u062A \u0627\u0644\u062A\u0639\u0644\u0645")), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, db.learningCategories.map(function (c) {
+    return /*#__PURE__*/React.createElement("span", {
+      key: c.id,
+      className: "flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full",
+      style: {
+        background: t.surfaceAlt,
+        color: t.ink
+      }
+    }, c.name, /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return delCat(c.id);
+      },
+      style: {
+        color: t.inkSoft
+      }
+    }, /*#__PURE__*/React.createElement(X, {
+      size: 12
+    })));
+  }), /*#__PURE__*/React.createElement(AddInline, {
+    t: t,
+    onAdd: function onAdd(name) {
+      return addCat({
+        id: uid(),
+        name: name
+      });
+    },
+    placeholder: "\u0645\u062C\u0627\u0644 \u062C\u062F\u064A\u062F"
+  }))), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0633\u062C\u0644 \u0633\u0627\u0639\u0627\u062A \u0627\u0644\u062A\u0639\u0644\u0645",
+    icon: Clock,
+    items: db.learningLog,
+    onAdd: addLog,
+    onDelete: delLog,
+    fields: [{
+      key: "category",
+      label: "المجال",
+      type: "select",
+      options: db.learningCategories.map(function (c) {
+        return c.name;
+      })
+    }, {
+      key: "hours",
+      label: "عدد الساعات",
+      type: "number"
+    }, {
+      key: "date",
+      label: "التاريخ",
+      type: "date"
+    }, {
+      key: "notes",
+      label: "ملاحظات"
+    }]
+  }));
+}
+function AddInline(_ref31) {
+  var t = _ref31.t,
+    onAdd = _ref31.onAdd,
+    placeholder = _ref31.placeholder;
+  var _useState19 = useState(""),
+    _useState20 = _slicedToArray(_useState19, 2),
+    v = _useState20[0],
+    setV = _useState20[1];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: v,
+    onChange: function onChange(e) {
+      return setV(e.target.value);
+    },
+    placeholder: placeholder,
+    style: {
+      width: 140
+    },
+    onKeyDown: function onKeyDown(e) {
+      if (e.key === "Enter" && v.trim()) {
+        onAdd(v.trim());
+        setV("");
+      }
+    }
+  }), /*#__PURE__*/React.createElement(IconBtn, {
+    t: t,
+    onClick: function onClick() {
+      if (v.trim()) {
+        onAdd(v.trim());
+        setV("");
+      }
+    }
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 15
+  })));
+}
+
+/* ---------------- القرآن والدين ---------------- */
+var PRAYER_NAMES = ["الفجر", "الظهر", "العصر", "المغرب", "العشاء"];
+function DeenView(_ref32) {
+  var t = _ref32.t,
+    db = _ref32.db,
+    update = _ref32.update;
+  var today = todayISO();
+  var todayPrayers = db.deen.prayers[today] || [false, false, false, false, false];
+  var todayAzkar = db.deen.azkar[today] || {
+    morning: false,
+    evening: false
+  };
+  var togglePrayer = function togglePrayer(i) {
+    var arr = _toConsumableArray(todayPrayers);
+    arr[i] = !arr[i];
+    update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        deen: _objectSpread(_objectSpread({}, p.deen), {}, {
+          prayers: _objectSpread(_objectSpread({}, p.deen.prayers), {}, _defineProperty({}, today, arr))
+        })
+      });
+    });
+  };
+  var toggleAzkar = function toggleAzkar(key) {
+    update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        deen: _objectSpread(_objectSpread({}, p.deen), {}, {
+          azkar: _objectSpread(_objectSpread({}, p.deen.azkar), {}, _defineProperty({}, today, _objectSpread(_objectSpread({}, todayAzkar), {}, _defineProperty({}, key, !todayAzkar[key]))))
+        })
+      });
+    });
+  };
+  var wirdDone = !!db.deen.wird[today];
+  var toggleWird = function toggleWird() {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        deen: _objectSpread(_objectSpread({}, p.deen), {}, {
+          wird: _objectSpread(_objectSpread({}, p.deen.wird), {}, _defineProperty({}, today, !wirdDone))
+        })
+      });
+    });
+  };
+  var setHifz = function setHifz(key, val) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        deen: _objectSpread(_objectSpread({}, p.deen), {}, {
+          hifz: _objectSpread(_objectSpread({}, p.deen.hifz), {}, _defineProperty({}, key, val))
+        })
+      });
+    });
+  };
+  var addHifzLog = function addHifzLog(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        deen: _objectSpread(_objectSpread({}, p.deen), {}, {
+          hifzLog: [_objectSpread(_objectSpread({}, item), {}, {
+            date: item.date || today
+          })].concat(_toConsumableArray(p.deen.hifzLog))
+        })
+      });
+    });
+  };
+  var delHifzLog = function delHifzLog(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        deen: _objectSpread(_objectSpread({}, p.deen), {}, {
+          hifzLog: p.deen.hifzLog.filter(function (x) {
+            return x.id !== id;
+          })
+        })
+      });
+    });
+  };
+  var weeklyPrayerRate = useMemo(function () {
+    var s = startOfWeek(new Date());
+    var total = 0,
+      done = 0;
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(s);
+      d.setDate(s.getDate() + i);
+      var iso = d.toISOString().slice(0, 10);
+      var arr = db.deen.prayers[iso];
+      if (arr) {
+        total += 5;
+        done += arr.filter(Boolean).length;
+      }
+    }
+    return total ? Math.round(done / total * 100) : 0;
+  }, [db.deen.prayers]);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0642\u0631\u0622\u0646 \u0648\u0627\u0644\u062F\u064A\u0646",
+    subtitle: "\u0627\u0644\u0635\u0644\u0648\u0627\u062A\u060C \u0627\u0644\u0648\u0631\u062F\u060C \u0627\u0644\u062D\u0641\u0638\u060C \u0648\u0627\u0644\u0623\u0630\u0643\u0627\u0631",
+    icon: BookOpen
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-2 gap-4 mb-4"
+  }, /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-3"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0627\u0644\u0635\u0644\u0648\u0627\u062A \u0627\u0644\u064A\u0648\u0645"), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs px-2 py-0.5 rounded-full",
+    style: {
+      background: t.goldSoft,
+      color: t.gold
+    }
+  }, "\u0647\u0630\u0627 \u0627\u0644\u0623\u0633\u0628\u0648\u0639 ", weeklyPrayerRate, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-5 gap-2"
+  }, PRAYER_NAMES.map(function (name, i) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: name,
+      onClick: function onClick() {
+        return togglePrayer(i);
+      },
+      className: "flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-colors",
+      style: {
+        borderColor: todayPrayers[i] ? t.gold : t.border,
+        background: todayPrayers[i] ? t.goldSoft : "transparent"
+      }
+    }, todayPrayers[i] ? /*#__PURE__*/React.createElement(CheckCircle2, {
+      size: 18,
+      color: t.gold
+    }) : /*#__PURE__*/React.createElement(Circle, {
+      size: 18,
+      color: t.inkSoft
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "text-xs",
+      style: {
+        color: t.ink
+      }
+    }, name));
+  }))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-3",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0627\u0644\u0648\u0631\u062F \u0627\u0644\u064A\u0648\u0645\u064A \u0648\u0627\u0644\u0623\u0630\u0643\u0627\u0631"), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: toggleWird,
+    className: "w-full flex items-center gap-2 p-3 rounded-xl border",
+    style: {
+      borderColor: wirdDone ? t.gold : t.border,
+      background: wirdDone ? t.goldSoft : "transparent"
+    }
+  }, wirdDone ? /*#__PURE__*/React.createElement(CheckCircle2, {
+    size: 18,
+    color: t.gold
+  }) : /*#__PURE__*/React.createElement(Circle, {
+    size: 18,
+    color: t.inkSoft
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm",
+    style: {
+      color: t.ink
+    }
+  }, "\u0627\u0644\u0648\u0631\u062F \u0627\u0644\u064A\u0648\u0645\u064A \u0645\u0646 \u0627\u0644\u0642\u0631\u0622\u0646")), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return toggleAzkar("morning");
+    },
+    className: "w-full flex items-center gap-2 p-3 rounded-xl border",
+    style: {
+      borderColor: todayAzkar.morning ? t.gold : t.border,
+      background: todayAzkar.morning ? t.goldSoft : "transparent"
+    }
+  }, todayAzkar.morning ? /*#__PURE__*/React.createElement(CheckCircle2, {
+    size: 18,
+    color: t.gold
+  }) : /*#__PURE__*/React.createElement(Circle, {
+    size: 18,
+    color: t.inkSoft
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm",
+    style: {
+      color: t.ink
+    }
+  }, "\u0623\u0630\u0643\u0627\u0631 \u0627\u0644\u0635\u0628\u0627\u062D")), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return toggleAzkar("evening");
+    },
+    className: "w-full flex items-center gap-2 p-3 rounded-xl border",
+    style: {
+      borderColor: todayAzkar.evening ? t.gold : t.border,
+      background: todayAzkar.evening ? t.goldSoft : "transparent"
+    }
+  }, todayAzkar.evening ? /*#__PURE__*/React.createElement(CheckCircle2, {
+    size: 18,
+    color: t.gold
+  }) : /*#__PURE__*/React.createElement(Circle, {
+    size: 18,
+    color: t.inkSoft
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-sm",
+    style: {
+      color: t.ink
+    }
+  }, "\u0623\u0630\u0643\u0627\u0631 \u0627\u0644\u0645\u0633\u0627\u0621"))))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 mb-4"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-3",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u062A\u0642\u062F\u0645 \u0627\u0644\u062D\u0641\u0638"), /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-3 gap-3 mb-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0633\u0648\u0631\u0629 \u0627\u0644\u062D\u0627\u0644\u064A\u0629"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: db.deen.hifz.surah,
+    onChange: function onChange(e) {
+      return setHifz("surah", e.target.value);
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0622\u064A\u0629 \u0627\u0644\u062D\u0627\u0644\u064A\u0629"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: db.deen.hifz.ayah,
+    onChange: function onChange(e) {
+      return setHifz("ayah", e.target.value);
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0646\u0633\u0628\u0629 \u0627\u0644\u062D\u0641\u0638 %"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    type: "number",
+    value: db.deen.hifz.percent,
+    onChange: function onChange(e) {
+      return setHifz("percent", e.target.value);
+    }
+  }))), /*#__PURE__*/React.createElement(ProgressBar, {
+    t: t,
+    percent: Number(db.deen.hifz.percent) || 0,
+    color: t.gold
+  })), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0633\u062C\u0644 \u0627\u0644\u062D\u0641\u0638 \u0648\u0627\u0644\u0645\u0631\u0627\u062C\u0639\u0629",
+    icon: BookOpen,
+    items: db.deen.hifzLog,
+    onAdd: addHifzLog,
+    onDelete: delHifzLog,
+    fields: [{
+      key: "content",
+      label: "المحفوظ / المراجَع"
+    }, {
+      key: "date",
+      label: "التاريخ",
+      type: "date"
+    }, {
+      key: "type",
+      label: "النوع",
+      type: "select",
+      options: ["حفظ جديد", "مراجعة"]
+    }]
+  }), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 mt-4"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-2",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0627\u0644\u062A\u0642\u062F\u0645 \u0627\u0644\u0634\u0647\u0631\u064A"), /*#__PURE__*/React.createElement(TextArea, {
+    t: t,
+    rows: 3,
+    value: db.deen.monthlyNotes,
+    onChange: function onChange(e) {
+      return update(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          deen: _objectSpread(_objectSpread({}, p.deen), {}, {
+            monthlyNotes: e.target.value
+          })
+        });
+      });
+    }
+  })));
+}
+
+/* ---------------- الصحة ---------------- */
+function HealthView(_ref33) {
+  var t = _ref33.t,
+    db = _ref33.db,
+    update = _ref33.update;
+  var today = todayISO();
+  var sleep = db.health.sleep[today] || "";
+  var water = db.health.water[today] || 0;
+  var exercise = db.health.exercise[today] || "";
+  var setField = function setField(group, val) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        health: _objectSpread(_objectSpread({}, p.health), {}, _defineProperty({}, group, _objectSpread(_objectSpread({}, p.health[group]), {}, _defineProperty({}, today, val))))
+      });
+    });
+  };
+  var addWeight = function addWeight(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        health: _objectSpread(_objectSpread({}, p.health), {}, {
+          weightLog: [_objectSpread(_objectSpread({}, item), {}, {
+            date: item.date || today
+          })].concat(_toConsumableArray(p.health.weightLog))
+        })
+      });
+    });
+  };
+  var delWeight = function delWeight(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        health: _objectSpread(_objectSpread({}, p.health), {}, {
+          weightLog: p.health.weightLog.filter(function (x) {
+            return x.id !== id;
+          })
+        })
+      });
+    });
+  };
+  var waterTarget = 8;
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0635\u062D\u0629",
+    subtitle: "\u0627\u0644\u0646\u0648\u0645\u060C \u0627\u0644\u0645\u0627\u0621\u060C \u0627\u0644\u0631\u064A\u0627\u0636\u0629\u060C \u0648\u0627\u0644\u0648\u0632\u0646",
+    icon: HeartPulse
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
+  }, /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 mb-3"
+  }, /*#__PURE__*/React.createElement(MoonIcon, {
+    size: 16,
+    color: t.night
+  }), /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0627\u0644\u0646\u0648\u0645 (\u0633\u0627\u0639\u0627\u062A \u0627\u0644\u064A\u0648\u0645)")), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    type: "number",
+    value: sleep,
+    onChange: function onChange(e) {
+      return setField("sleep", e.target.value);
+    }
+  })), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 mb-3"
+  }, /*#__PURE__*/React.createElement(Droplet, {
+    size: 16,
+    color: "#4C8C6B"
+  }), /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0627\u0644\u0645\u064A\u0627\u0647 (\u0623\u0643\u0648\u0627\u0628 \u0627\u0644\u064A\u0648\u0645)")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 mb-2"
+  }, /*#__PURE__*/React.createElement(IconBtn, {
+    t: t,
+    onClick: function onClick() {
+      return setField("water", Math.max(0, Number(water) - 1));
+    }
+  }, "\u2212"), /*#__PURE__*/React.createElement("span", {
+    className: "font-extrabold text-lg flex-1 text-center",
+    style: {
+      color: t.ink
+    }
+  }, water, " / ", waterTarget), /*#__PURE__*/React.createElement(IconBtn, {
+    t: t,
+    onClick: function onClick() {
+      return setField("water", Number(water) + 1);
+    }
+  }, /*#__PURE__*/React.createElement(Plus, {
+    size: 14
+  }))), /*#__PURE__*/React.createElement(ProgressBar, {
+    t: t,
+    percent: Math.min(100, Number(water) / waterTarget * 100),
+    color: "#4C8C6B"
+  })), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 mb-3"
+  }, /*#__PURE__*/React.createElement(Dumbbell, {
+    size: 16,
+    color: t.danger
+  }), /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0627\u0644\u0631\u064A\u0627\u0636\u0629 (\u062F\u0642\u0627\u0626\u0642 \u0627\u0644\u064A\u0648\u0645)")), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    type: "number",
+    value: exercise,
+    onChange: function onChange(e) {
+      return setField("exercise", e.target.value);
+    }
+  }))), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0633\u062C\u0644 \u0627\u0644\u0648\u0632\u0646 \u0648\u0627\u0644\u062A\u062D\u0627\u0644\u064A\u0644",
+    icon: Scale,
+    items: db.health.weightLog,
+    onAdd: addWeight,
+    onDelete: delWeight,
+    fields: [{
+      key: "weight",
+      label: "الوزن (كجم)"
+    }, {
+      key: "date",
+      label: "التاريخ",
+      type: "date"
+    }, {
+      key: "notes",
+      label: "ملاحظات تحاليل"
+    }]
+  }));
+}
+
+/* ---------------- الأسرة ---------------- */
+function FamilyView(_ref34) {
+  var t = _ref34.t,
+    db = _ref34.db,
+    update = _ref34.update;
+  var addSession = function addSession(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        family: _objectSpread(_objectSpread({}, p.family), {}, {
+          sessions: [_objectSpread(_objectSpread({}, item), {}, {
+            date: item.date || todayISO()
+          })].concat(_toConsumableArray(p.family.sessions))
+        })
+      });
+    });
+  };
+  var delSession = function delSession(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        family: _objectSpread(_objectSpread({}, p.family), {}, {
+          sessions: p.family.sessions.filter(function (x) {
+            return x.id !== id;
+          })
+        })
+      });
+    });
+  };
+  var addGoal = function addGoal(text) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        family: _objectSpread(_objectSpread({}, p.family), {}, {
+          goals: [].concat(_toConsumableArray(p.family.goals), [{
+            id: uid(),
+            text: text,
+            done: false
+          }])
+        })
+      });
+    });
+  };
+  var toggleGoal = function toggleGoal(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        family: _objectSpread(_objectSpread({}, p.family), {}, {
+          goals: p.family.goals.map(function (g) {
+            return g.id === id ? _objectSpread(_objectSpread({}, g), {}, {
+              done: !g.done
+            }) : g;
+          })
+        })
+      });
+    });
+  };
+  var delGoal = function delGoal(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        family: _objectSpread(_objectSpread({}, p.family), {}, {
+          goals: p.family.goals.filter(function (g) {
+            return g.id !== id;
+          })
+        })
+      });
+    });
+  };
+  var addNeed = function addNeed(text) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        family: _objectSpread(_objectSpread({}, p.family), {}, {
+          childNeeds: [].concat(_toConsumableArray(p.family.childNeeds), [{
+            id: uid(),
+            text: text
+          }])
+        })
+      });
+    });
+  };
+  var delNeed = function delNeed(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        family: _objectSpread(_objectSpread({}, p.family), {}, {
+          childNeeds: p.family.childNeeds.filter(function (x) {
+            return x.id !== id;
+          })
+        })
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0623\u0633\u0631\u0629",
+    subtitle: "\u0648\u0642\u062A\u0643 \u0645\u0639 \u0645\u0646 \u062A\u062D\u0628 \u0623\u0647\u0645 \u0627\u0633\u062A\u062B\u0645\u0627\u0631",
+    icon: Users2
+  }), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0627\u0644\u062C\u0644\u0633\u0629 \u0627\u0644\u0623\u0633\u0628\u0648\u0639\u064A\u0629 \u0645\u0639 \u0627\u0644\u0632\u0648\u062C\u0629",
+    icon: Users2,
+    items: db.family.sessions,
+    onAdd: addSession,
+    onDelete: delSession,
+    fields: [{
+      key: "topic",
+      label: "موضوع الجلسة"
+    }, {
+      key: "date",
+      label: "التاريخ",
+      type: "date"
+    }, {
+      key: "notes",
+      label: "ملاحظات"
+    }]
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-2 gap-4 mt-4"
+  }, /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-3",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0623\u0647\u062F\u0627\u0641 \u0627\u0644\u0623\u0633\u0631\u0629"), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2 mb-3"
+  }, db.family.goals.map(function (g) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: g.id,
+      className: "flex items-center gap-2"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return toggleGoal(g.id);
+      },
+      style: {
+        color: g.done ? t.accent : t.inkSoft
+      }
+    }, g.done ? /*#__PURE__*/React.createElement(CheckCircle2, {
+      size: 16
+    }) : /*#__PURE__*/React.createElement(Circle, {
+      size: 16
+    })), /*#__PURE__*/React.createElement("span", {
+      className: "text-sm flex-1",
+      style: {
+        color: t.ink,
+        textDecoration: g.done ? "line-through" : "none"
+      }
+    }, g.text), /*#__PURE__*/React.createElement(IconBtn, {
+      t: t,
+      danger: true,
+      onClick: function onClick() {
+        return delGoal(g.id);
+      }
+    }, /*#__PURE__*/React.createElement(Trash2, {
+      size: 13
+    })));
+  })), /*#__PURE__*/React.createElement(AddInline, {
+    t: t,
+    placeholder: "\u0647\u062F\u0641 \u062C\u062F\u064A\u062F",
+    onAdd: addGoal
+  })), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-3",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0627\u062D\u062A\u064A\u0627\u062C\u0627\u062A \u0627\u0644\u0637\u0641\u0644"), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2 mb-3"
+  }, db.family.childNeeds.map(function (n) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: n.id,
+      className: "flex items-center gap-2"
+    }, /*#__PURE__*/React.createElement(Circle, {
+      size: 6,
+      fill: t.inkSoft,
+      color: t.inkSoft
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "text-sm flex-1",
+      style: {
+        color: t.ink
+      }
+    }, n.text), /*#__PURE__*/React.createElement(IconBtn, {
+      t: t,
+      danger: true,
+      onClick: function onClick() {
+        return delNeed(n.id);
+      }
+    }, /*#__PURE__*/React.createElement(Trash2, {
+      size: 13
+    })));
+  })), /*#__PURE__*/React.createElement(AddInline, {
+    t: t,
+    placeholder: "\u0627\u062D\u062A\u064A\u0627\u062C \u062C\u062F\u064A\u062F",
+    onAdd: addNeed
+  }))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 mt-4"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-2",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0645\u064A\u0632\u0627\u0646\u064A\u0629 \u0627\u0644\u0645\u0646\u0632\u0644 \u0648\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0639\u0627\u0645\u0629"), /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-3 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0645\u064A\u0632\u0627\u0646\u064A\u0629 \u0627\u0644\u0645\u0646\u0632\u0644"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: db.family.budget,
+    onChange: function onChange(e) {
+      return update(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          family: _objectSpread(_objectSpread({}, p.family), {}, {
+            budget: e.target.value
+          })
+        });
+      });
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "md:col-span-2"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs block mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0645\u0644\u0627\u062D\u0638\u0627\u062A"), /*#__PURE__*/React.createElement(TextInput, {
+    t: t,
+    value: db.family.notes,
+    onChange: function onChange(e) {
+      return update(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          family: _objectSpread(_objectSpread({}, p.family), {}, {
+            notes: e.target.value
+          })
+        });
+      });
+    }
+  })))));
+}
+
+/* ---------------- المال ---------------- */
+function FinanceView(_ref35) {
+  var t = _ref35.t,
+    db = _ref35.db,
+    update = _ref35.update;
+  var addIncome = function addIncome(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        finance: _objectSpread(_objectSpread({}, p.finance), {}, {
+          income: [_objectSpread(_objectSpread({}, item), {}, {
+            date: item.date || todayISO()
+          })].concat(_toConsumableArray(p.finance.income))
+        })
+      });
+    });
+  };
+  var delIncome = function delIncome(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        finance: _objectSpread(_objectSpread({}, p.finance), {}, {
+          income: p.finance.income.filter(function (x) {
+            return x.id !== id;
+          })
+        })
+      });
+    });
+  };
+  var addExpense = function addExpense(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        finance: _objectSpread(_objectSpread({}, p.finance), {}, {
+          expenses: [_objectSpread(_objectSpread({}, item), {}, {
+            date: item.date || todayISO()
+          })].concat(_toConsumableArray(p.finance.expenses))
+        })
+      });
+    });
+  };
+  var delExpense = function delExpense(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        finance: _objectSpread(_objectSpread({}, p.finance), {}, {
+          expenses: p.finance.expenses.filter(function (x) {
+            return x.id !== id;
+          })
+        })
+      });
+    });
+  };
+  var totalIncome = db.finance.income.reduce(function (s, i) {
+    return s + (Number(i.amount) || 0);
+  }, 0);
+  var totalExpenses = db.finance.expenses.reduce(function (s, i) {
+    return s + (Number(i.amount) || 0);
+  }, 0);
+  var setGoal = function setGoal(goal, key, val) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        finance: _objectSpread(_objectSpread({}, p.finance), {}, _defineProperty({}, goal, _objectSpread(_objectSpread({}, p.finance[goal]), {}, _defineProperty({}, key, val))))
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0645\u0627\u0644",
+    subtitle: "\u0627\u0644\u062F\u062E\u0644\u060C \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062A\u060C \u0627\u0644\u0627\u062F\u062E\u0627\u0631\u060C \u0648\u0627\u0644\u0627\u0633\u062A\u062B\u0645\u0627\u0631 \u0627\u0644\u062D\u0644\u0627\u0644",
+    icon: Wallet
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"
+  }, /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062F\u062E\u0644"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xl font-extrabold",
+    style: {
+      color: t.accent,
+      fontFamily: "Cairo"
+    }
+  }, fmtMoney(totalIncome))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062A"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xl font-extrabold",
+    style: {
+      color: t.danger,
+      fontFamily: "Cairo"
+    }
+  }, fmtMoney(totalExpenses))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0627\u0644\u0635\u0627\u0641\u064A"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xl font-extrabold",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, fmtMoney(totalIncome - totalExpenses))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0635\u0646\u062F\u0648\u0642 \u0627\u0644\u0637\u0648\u0627\u0631\u0626"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xl font-extrabold",
+    style: {
+      color: t.night,
+      fontFamily: "Cairo"
+    }
+  }, fmtMoney(db.finance.emergencyGoal.current)))), /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-2 gap-4 mb-4"
+  }, [{
+    key: "apartmentGoal",
+    label: "ادخار الشقة",
+    color: t.night
+  }, {
+    key: "emergencyGoal",
+    label: "صندوق الطوارئ",
+    color: t.gold
+  }].map(function (g) {
+    var goal = db.finance[g.key];
+    var pct = goal.target ? Math.min(100, Math.round(goal.current / goal.target * 100)) : 0;
+    return /*#__PURE__*/React.createElement(Card, {
+      key: g.key,
+      t: t,
+      className: "p-5"
+    }, /*#__PURE__*/React.createElement("h3", {
+      className: "font-bold mb-3",
+      style: {
+        color: t.ink,
+        fontFamily: "Cairo"
+      }
+    }, g.label), /*#__PURE__*/React.createElement("div", {
+      className: "grid grid-cols-2 gap-3 mb-3"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+      className: "text-xs block mb-1",
+      style: {
+        color: t.inkSoft
+      }
+    }, "\u0627\u0644\u062D\u0627\u0644\u064A"), /*#__PURE__*/React.createElement(TextInput, {
+      t: t,
+      type: "number",
+      value: goal.current,
+      onChange: function onChange(e) {
+        return setGoal(g.key, "current", e.target.value);
+      }
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+      className: "text-xs block mb-1",
+      style: {
+        color: t.inkSoft
+      }
+    }, "\u0627\u0644\u0647\u062F\u0641"), /*#__PURE__*/React.createElement(TextInput, {
+      t: t,
+      type: "number",
+      value: goal.target,
+      onChange: function onChange(e) {
+        return setGoal(g.key, "target", e.target.value);
+      }
+    }))), /*#__PURE__*/React.createElement(ProgressBar, {
+      t: t,
+      percent: pct,
+      color: g.color
+    }), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs mt-1 text-left",
+      style: {
+        color: t.inkSoft
+      }
+    }, pct, "%"));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-2 gap-4"
+  }, /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0627\u0644\u062F\u062E\u0644",
+    icon: TrendingUp,
+    items: db.finance.income,
+    onAdd: addIncome,
+    onDelete: delIncome,
+    fields: [{
+      key: "source",
+      label: "المصدر"
+    }, {
+      key: "amount",
+      label: "المبلغ",
+      type: "number"
+    }, {
+      key: "date",
+      label: "التاريخ",
+      type: "date"
+    }]
+  }), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062A",
+    icon: Receipt,
+    items: db.finance.expenses,
+    onAdd: addExpense,
+    onDelete: delExpense,
+    fields: [{
+      key: "item",
+      label: "البند"
+    }, {
+      key: "amount",
+      label: "المبلغ",
+      type: "number"
+    }, {
+      key: "date",
+      label: "التاريخ",
+      type: "date"
+    }]
+  })), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 mt-4"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-2",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0627\u0644\u0627\u0633\u062A\u062B\u0645\u0627\u0631 \u0627\u0644\u062D\u0644\u0627\u0644"), /*#__PURE__*/React.createElement(TextArea, {
+    t: t,
+    rows: 3,
+    value: db.finance.investmentNotes,
+    onChange: function onChange(e) {
+      return update(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          finance: _objectSpread(_objectSpread({}, p.finance), {}, {
+            investmentNotes: e.target.value
+          })
+        });
+      });
+    }
+  })));
+}
+
+/* ---------------- المراجعات ---------------- */
+var REVIEW_TYPES = [{
+  key: "daily",
+  label: "يومية"
+}, {
+  key: "weekly",
+  label: "أسبوعية"
+}, {
+  key: "monthly",
+  label: "شهرية"
+}, {
+  key: "quarterly",
+  label: "ربع سنوية"
+}, {
+  key: "yearly",
+  label: "سنوية"
+}];
+function ReviewsView(_ref36) {
+  var t = _ref36.t,
+    db = _ref36.db,
+    update = _ref36.update;
+  var _useState21 = useState("daily"),
+    _useState22 = _slicedToArray(_useState21, 2),
+    tab = _useState22[0],
+    setTab = _useState22[1];
+  var add = function add(item) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        reviews: _objectSpread(_objectSpread({}, p.reviews), {}, _defineProperty({}, tab, [_objectSpread(_objectSpread({}, item), {}, {
+          date: item.date || todayISO()
+        })].concat(_toConsumableArray(p.reviews[tab]))))
+      });
+    });
+  };
+  var del = function del(id) {
+    return update(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, {
+        reviews: _objectSpread(_objectSpread({}, p.reviews), {}, _defineProperty({}, tab, p.reviews[tab].filter(function (x) {
+          return x.id !== id;
+        })))
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0645\u0631\u0627\u062C\u0639\u0627\u062A",
+    subtitle: "\u0645\u062D\u0637\u0627\u062A \u0644\u0644\u062A\u0623\u0645\u0644 \u0648\u062A\u0635\u062D\u064A\u062D \u0627\u0644\u0645\u0633\u0627\u0631",
+    icon: ClipboardList
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-1 p-1 rounded-xl mb-4 w-fit",
+    style: {
+      background: t.surfaceAlt
+    }
+  }, REVIEW_TYPES.map(function (r) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: r.key,
+      onClick: function onClick() {
+        return setTab(r.key);
+      },
+      className: "px-3 py-1.5 rounded-lg text-sm font-bold",
+      style: {
+        background: tab === r.key ? t.surface : "transparent",
+        color: tab === r.key ? t.accent : t.inkSoft,
+        fontFamily: "Cairo"
+      }
+    }, r.label);
+  })), /*#__PURE__*/React.createElement(RecordList, {
+    t: t,
+    title: "\u0645\u0631\u0627\u062C\u0639\u0629 ".concat(REVIEW_TYPES.find(function (r) {
+      return r.key === tab;
+    }).label),
+    icon: ClipboardList,
+    items: db.reviews[tab],
+    onAdd: add,
+    onDelete: del,
+    fields: [{
+      key: "title",
+      label: "العنوان"
+    }, {
+      key: "date",
+      label: "التاريخ",
+      type: "date"
+    }, {
+      key: "content",
+      label: "المحتوى"
+    }]
+  }));
+}
+
+/* ---------------- النسخ الاحتياطي ---------------- */
+function SettingsView(_ref37) {
+  var t = _ref37.t,
+    db = _ref37.db,
+    exportJSON = _ref37.exportJSON,
+    importJSON = _ref37.importJSON,
+    lastSaved = _ref37.lastSaved;
+  var fileRef = useRef(null);
+  var totalRecords = db.tasks.length + db.projects.length + db.clients.length + db.aiTools.length + db.equipment.length + db.contentIdeas.length + db.mediaItems.length + db.portfolio.length + db.learningLog.length + db.deen.hifzLog.length + db.health.weightLog.length + db.family.sessions.length + db.finance.income.length + db.finance.expenses.length;
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionTitle, {
+    t: t,
+    title: "\u0627\u0644\u0646\u0633\u062E \u0627\u0644\u0627\u062D\u062A\u064A\u0627\u0637\u064A",
+    subtitle: "\u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0645\u062D\u0641\u0648\u0638\u0629 \u0639\u0644\u0649 \u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632 \u0641\u0642\u0637 \u2014 \u062E\u0630 \u0646\u0633\u062E\u0629 \u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629 \u0628\u0627\u0646\u062A\u0638\u0627\u0645",
+    icon: DownloadCloud
+  }), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5 mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between flex-wrap gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm",
+    style: {
+      color: t.ink
+    }
+  }, "\u0639\u062F\u062F \u0627\u0644\u0633\u062C\u0644\u0627\u062A \u0627\u0644\u0645\u062E\u0632\u0651\u0646\u0629 \u062D\u0627\u0644\u064A\u064B\u0627: ", /*#__PURE__*/React.createElement("strong", null, totalRecords)), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mt-1",
+    style: {
+      color: t.inkSoft
+    }
+  }, lastSaved ? "\u0622\u062E\u0631 \u062D\u0641\u0638 \u062A\u0644\u0642\u0627\u0626\u064A: ".concat(lastSaved.toLocaleTimeString("ar-EG")) : "لم يُحفظ أي تغيير بعد في هذه الجلسة")), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, /*#__PURE__*/React.createElement(PrimaryBtn, {
+    t: t,
+    icon: Download,
+    onClick: exportJSON
+  }, "\u062A\u0646\u0632\u064A\u0644 \u0646\u0633\u062E\u0629 \u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629"), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      var _fileRef$current;
+      return (_fileRef$current = fileRef.current) === null || _fileRef$current === void 0 ? void 0 : _fileRef$current.click();
+    },
+    className: "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border",
+    style: {
+      borderColor: t.border,
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, /*#__PURE__*/React.createElement(UploadCloud, {
+    size: 16
+  }), " \u0627\u0633\u062A\u0639\u0627\u062F\u0629 \u0646\u0633\u062E\u0629"), /*#__PURE__*/React.createElement("input", {
+    ref: fileRef,
+    type: "file",
+    accept: "application/json",
+    className: "hidden",
+    onChange: function onChange(e) {
+      return e.target.files[0] && importJSON(e.target.files[0]);
+    }
+  })))), /*#__PURE__*/React.createElement(Card, {
+    t: t,
+    className: "p-5"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold mb-2",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0647\u0645\u0629"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm leading-relaxed",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0647\u0630\u0627 \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u064A\u062E\u0632\u0651\u0646 \u0643\u0644 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0645\u062D\u0644\u064A\u064B\u0627 \u062F\u0627\u062E\u0644 \u0645\u062A\u0635\u0641\u062D \u062C\u0647\u0627\u0632\u0643 (\u0628\u062F\u0648\u0646 \u062E\u0648\u0627\u062F\u0645 \u0623\u0648 \u0625\u0646\u062A\u0631\u0646\u062A). \u0625\u0646 \u0645\u0633\u062D\u062A \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0645\u062A\u0635\u0641\u062D \u0623\u0648 \u0628\u062F\u0651\u0644\u062A \u0627\u0644\u062C\u0647\u0627\u0632 \u0641\u0633\u062A\u0641\u0642\u062F \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0645\u0627 \u0644\u0645 \u062A\u0643\u0646 \u0642\u062F \u0646\u0632\u0651\u0644\u062A \u0646\u0633\u062E\u0629 \u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629. \u064A\u064F\u0646\u0635\u062D \u0628\u062A\u0646\u0632\u064A\u0644 \u0646\u0633\u062E\u0629 \u0627\u062D\u062A\u064A\u0627\u0637\u064A\u0629 \u0623\u0633\u0628\u0648\u0639\u064A\u064B\u0627 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644.")));
+}
+
+/* ============================================================
+   التطبيق الرئيسي
+   ============================================================ */
+function App() {
+  useFonts();
+  var _useDB = useDB(),
+    db = _useDB.db,
+    update = _useDB.update,
+    status = _useDB.status,
+    lastSaved = _useDB.lastSaved,
+    exportJSON = _useDB.exportJSON,
+    importJSON = _useDB.importJSON;
+  var _useState23 = useState("light"),
+    _useState24 = _slicedToArray(_useState23, 2),
+    theme = _useState24[0],
+    setTheme = _useState24[1];
+  var _useState25 = useState("dashboard"),
+    _useState26 = _slicedToArray(_useState25, 2),
+    active = _useState26[0],
+    setActive = _useState26[1];
+  var _useState27 = useState(false),
+    _useState28 = _slicedToArray(_useState27, 2),
+    sidebarOpen = _useState28[0],
+    setSidebarOpen = _useState28[1];
+  var t = PALETTES[theme];
+  if (status === "loading" || !db) {
+    return /*#__PURE__*/React.createElement("div", {
+      dir: "rtl",
+      className: "min-h-screen flex items-center justify-center",
+      style: {
+        background: PALETTES.light.bg,
+        fontFamily: "Tajawal"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col items-center gap-3"
+    }, /*#__PURE__*/React.createElement(Compass, {
+      className: "animate-spin",
+      size: 28,
+      color: PALETTES.light.accent
+    }), /*#__PURE__*/React.createElement("p", {
+      style: {
+        color: PALETTES.light.inkSoft
+      }
+    }, "\u062C\u0627\u0631\u0650 \u062A\u062D\u0645\u064A\u0644 \u0646\u0638\u0627\u0645\u0643 \u0627\u0644\u0634\u062E\u0635\u064A\u2026")));
+  }
+  var activeMeta = SECTIONS.flatMap(function (g) {
+    return g.items;
+  }).find(function (i) {
+    return i.id === active;
+  });
+  var renderSection = function renderSection() {
+    var props = {
+      t: t,
+      db: db,
+      update: update
+    };
+    switch (active) {
+      case "dashboard":
+        return /*#__PURE__*/React.createElement(Dashboard, _objectSpread(_objectSpread({}, props), {}, {
+          setActiveSection: setActive
+        }));
+      case "tasks":
+        return /*#__PURE__*/React.createElement(TasksView, props);
+      case "projects":
+        return /*#__PURE__*/React.createElement(ProjectsView, props);
+      case "clients":
+        return /*#__PURE__*/React.createElement(ClientsView, props);
+      case "media":
+        return /*#__PURE__*/React.createElement(MediaView, props);
+      case "content":
+        return /*#__PURE__*/React.createElement(ContentView, props);
+      case "brand":
+        return /*#__PURE__*/React.createElement(BrandView, props);
+      case "aitools":
+        return /*#__PURE__*/React.createElement(AIToolsView, props);
+      case "equipment":
+        return /*#__PURE__*/React.createElement(EquipmentView, props);
+      case "learning":
+        return /*#__PURE__*/React.createElement(LearningView, props);
+      case "deen":
+        return /*#__PURE__*/React.createElement(DeenView, props);
+      case "health":
+        return /*#__PURE__*/React.createElement(HealthView, props);
+      case "family":
+        return /*#__PURE__*/React.createElement(FamilyView, props);
+      case "finance":
+        return /*#__PURE__*/React.createElement(FinanceView, props);
+      case "reviews":
+        return /*#__PURE__*/React.createElement(ReviewsView, props);
+      case "settings":
+        return /*#__PURE__*/React.createElement(SettingsView, {
+          t: t,
+          db: db,
+          exportJSON: exportJSON,
+          importJSON: importJSON,
+          lastSaved: lastSaved
+        });
+      default:
+        return null;
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    dir: "rtl",
+    className: "min-h-screen flex",
+    style: {
+      background: t.bg,
+      fontFamily: "Tajawal",
+      color: t.ink
+    }
+  }, /*#__PURE__*/React.createElement("style", null, "\n        * { box-sizing: border-box; }\n        ::-webkit-scrollbar { width: 8px; height: 8px; }\n        ::-webkit-scrollbar-thumb { background: ".concat(t.border, "; border-radius: 8px; }\n        select { -webkit-appearance: none; appearance: none; }\n        button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {\n          outline: 2px solid ").concat(t.accent, "; outline-offset: 1px;\n        }\n        @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }\n      ")), /*#__PURE__*/React.createElement("aside", {
+    className: "fixed lg:static top-0 bottom-0 right-0 w-72 shrink-0 border-l z-30 transition-transform duration-300 flex flex-col\n        ".concat(sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"),
+    style: {
+      background: t.surface,
+      borderColor: t.border
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-5 flex items-center gap-3 border-b",
+    style: {
+      borderColor: t.border
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-10 h-10 rounded-xl flex items-center justify-center",
+    style: {
+      background: t.accent
+    }
+  }, /*#__PURE__*/React.createElement(Gem, {
+    size: 20,
+    color: "#fff"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "font-extrabold text-sm",
+    style: {
+      color: t.ink,
+      fontFamily: "Cairo"
+    }
+  }, "\u0639\u0628\u062F \u0627\u0644\u0631\u062D\u0645\u0646 OS"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs",
+    style: {
+      color: t.inkSoft
+    }
+  }, "\u0646\u0638\u0627\u0645 \u062A\u0634\u063A\u064A\u0644 \u0634\u062E\u0635\u064A"))), /*#__PURE__*/React.createElement("nav", {
+    className: "flex-1 overflow-y-auto p-3 space-y-5"
+  }, SECTIONS.map(function (group) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: group.group
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "text-xs font-bold px-3 mb-1.5",
+      style: {
+        color: t.inkSoft
+      }
+    }, group.group), /*#__PURE__*/React.createElement("div", {
+      className: "space-y-0.5"
+    }, group.items.map(function (item) {
+      var Icon = item.icon;
+      var isActive = active === item.id;
+      return /*#__PURE__*/React.createElement("button", {
+        key: item.id,
+        onClick: function onClick() {
+          setActive(item.id);
+          setSidebarOpen(false);
+        },
+        className: "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors",
+        style: {
+          background: isActive ? t.accentSoft : "transparent",
+          color: isActive ? t.accent : t.inkSoft,
+          fontFamily: "Cairo"
+        }
+      }, /*#__PURE__*/React.createElement(Icon, {
+        size: 17
+      }), item.label);
+    })));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 border-t",
+    style: {
+      borderColor: t.border
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setTheme(theme === "light" ? "dark" : "light");
+    },
+    className: "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold",
+    style: {
+      color: t.inkSoft,
+      fontFamily: "Cairo"
+    }
+  }, theme === "light" ? /*#__PURE__*/React.createElement(Moon, {
+    size: 17
+  }) : /*#__PURE__*/React.createElement(Sun, {
+    size: 17
+  }), theme === "light" ? "الوضع الداكن" : "الوضع الفاتح"))), sidebarOpen && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 bg-black/40 z-20 lg:hidden",
+    onClick: function onClick() {
+      return setSidebarOpen(false);
+    }
+  }), /*#__PURE__*/React.createElement("main", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("header", {
+    className: "sticky top-0 z-10 flex items-center justify-between px-4 lg:px-8 py-3 border-b backdrop-blur",
+    style: {
+      background: t.bg + "E6",
+      borderColor: t.border
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "lg:hidden",
+    onClick: function onClick() {
+      return setSidebarOpen(true);
+    },
+    style: {
+      color: t.ink
+    }
+  }, /*#__PURE__*/React.createElement(Menu, {
+    size: 22
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "hidden lg:flex items-center gap-2 text-sm",
+    style: {
+      color: t.inkSoft
+    }
+  }, /*#__PURE__*/React.createElement(HomeIcon, {
+    size: 14
+  }), /*#__PURE__*/React.createElement(ChevronLeft, {
+    size: 14
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: t.ink,
+      fontWeight: 700
+    }
+  }, activeMeta === null || activeMeta === void 0 ? void 0 : activeMeta.label)), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs px-3 py-1.5 rounded-full",
+    style: {
+      background: t.accentSoft,
+      color: t.accent
+    }
+  }, new Date().toLocaleDateString("ar-EG", {
+    weekday: "long"
+  })))), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 lg:p-8 max-w-6xl mx-auto"
+  }, renderSection())));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+</script>
+</body>
+</html>
